@@ -1,5 +1,5 @@
 name: action-spacelift
-description: SpaceLift GraphQL Interface action
+description: SpaceLift Action to manage spaces, contexts, and stacks through the GraphQL endpoints and spacectl cli tool.
 branding:
   icon: 'arrow-up'
   color: 'blue'
