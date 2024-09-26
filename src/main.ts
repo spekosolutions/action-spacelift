@@ -1,11 +1,10 @@
 import * as core from '@actions/core';
-import { run } from './utils/run';  // Correct ES module syntax
+import { run } from './utils/run';
 import { installAndGetFolder } from './commands/spacectl';
 
 // Define the main function correctly
 const main = async (): Promise<void> => {
   try {
-    // Use `await` for async calls without 'import'
     const binaryFolder = await installAndGetFolder();
     core.addPath(binaryFolder);
     core.info("Added spacectl to PATH: " + binaryFolder);
@@ -24,6 +23,9 @@ const main = async (): Promise<void> => {
     console.error(e);
   }
 };
+
+// Export the main function so it can be imported in test files
+export { main };
 
 // Ensure proper handling of errors in the async context
 main().catch((e: Error) => {

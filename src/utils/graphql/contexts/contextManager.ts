@@ -23,7 +23,26 @@ class ContextManager extends GraphQLManager {
       const fileContents = fs.readFileSync(this.yamlFilePath, 'utf8')
       const parsedYaml = yaml.parse(fileContents)
 
-      // Merge additional inputs (spaceId and contextName)
+      // Perform validation on the YAML content to ensure required fields are present
+      if (!parsedYaml.configAttachments || parsedYaml.configAttachments.length === 0) {
+        core.setFailed("Missing 'configAttachments' in YAML.")
+        throw new Error("Missing 'configAttachments' in YAML.")
+      }
+
+      // Check for other critical values in configAttachments
+      parsedYaml.configAttachments.forEach((config: any) => {
+        if (!config.id || !config.value) {
+          core.setFailed("Each configAttachment must have a valid 'id' and 'value'.")
+          throw new Error("Each configAttachment must have a valid 'id' and 'value'.")
+        }
+        if (!config.type) {
+          config.type = 'ENVIRONMENT_VARIABLE' // Default to ENVIRONMENT_VARIABLE if not provided
+        }
+        if (config.writeOnly === undefined) {
+          config.writeOnly = true // Default to true if not provided
+        }
+      })
+
       return {
         ...parsedYaml,
         space: spaceId,
@@ -78,7 +97,6 @@ class ContextManager extends GraphQLManager {
 
   // Compare YAML config and labels with the existing context and update if necessary
   private detectChanges(existingContext: any, newConfig: any): boolean {
-    // Ensure all fields are defined before comparison
     const existingConfig = existingContext.config?.reduce((acc: any, elem: any) => {
       acc[elem.id] = elem.value
       return acc
@@ -91,13 +109,13 @@ class ContextManager extends GraphQLManager {
       return existingConfig[key] !== newConfigAttachments[key]
     })
 
-    // Detect label changes (ensure labels exist in both)
+    // Detect label changes
     const existingLabels = existingContext.labels || []
     const newLabels = newConfig.labels || []
 
     const labelChanges = newLabels.some((label: string) => !existingLabels.includes(label))
 
-    // Detect hook changes (ensure hooks exist in both)
+    // Detect hook changes
     const existingHooks = existingContext.hooks || {}
     const newHooks = newConfig.hooks || {}
 
@@ -112,8 +130,7 @@ class ContextManager extends GraphQLManager {
     inputs: any, 
     replaceConfigElements: boolean = false
   ): Promise<void> {
-    // Ensure that ID is only added when updating an existing context
-    const mutationType = contextId ? 'contextUpdateV2' : 'contextCreateV2'  // Use correct mutation names
+    const mutationType = contextId ? 'contextUpdateV2' : 'contextCreateV2'
     const mutationQuery = `
       mutation ${mutationType}($input: ContextInput!${contextId ? ', $id: ID!' : ''}${contextId ? ', $replaceConfigElements: Boolean' : ''}) {
         ${mutationType}(${contextId ? 'id: $id, ' : ''}input: $input${contextId ? ', replaceConfigElements: $replaceConfigElements' : ''}) {
@@ -130,7 +147,14 @@ class ContextManager extends GraphQLManager {
         description: inputs.description || '', // Optional
         space: inputs.space || null, // Optional
         labels: inputs.labels || [], // Required
-        configAttachments: inputs.configAttachments || [], // Required
+        configAttachments: inputs.configAttachments.map((config: any) => ({
+          id: config.id, // Must be provided
+          type: config.type || 'ENVIRONMENT_VARIABLE', // Default to 'ENVIRONMENT_VARIABLE'
+          value: config.value || '', // Ensure value is provided
+          writeOnly: config.writeOnly !== undefined ? config.writeOnly : true, // Default to 'true'
+          description: config.description || '', // Optional
+          fileMode: config.fileMode || '0644', // Optional, provide a default if needed
+        })) || [], // Required
         hooks: {
           beforeInit: inputs.hooks?.beforeInit || [],
           afterInit: inputs.hooks?.afterInit || [],
@@ -148,11 +172,13 @@ class ContextManager extends GraphQLManager {
       },
     }
 
-    // Add the ID and replaceConfigElements only when updating
+    // If updating, add ID and replaceConfigElements
     if (contextId) {
       variables.id = contextId
       variables.replaceConfigElements = replaceConfigElements
     }
+
+    core.info(`Variables before mutation: ${JSON.stringify(variables)}`)
 
     await this.sendRequest({ query: mutationQuery, variables })
     core.info(`Context ${contextId ? 'updated' : 'created'} successfully.`)
@@ -164,7 +190,7 @@ class ContextManager extends GraphQLManager {
     const existingContext = await this.getContextById()
 
     if (existingContext) {
-      core.info(`Context with space ID '${spaceId}' already exists: ${existingContext.id}`)
+      core.info(`Context with ID ${existingContext.id} already exists...`)
 
       // Detect changes in config, labels, and hooks
       const hasChanges = this.detectChanges(existingContext, inputs)

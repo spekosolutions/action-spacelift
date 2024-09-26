@@ -1,0 +1,56 @@
+name: Release
+
+on:
+  # Trigger the workflow when a version tag is created (vx.x.x)
+  push:
+    tags:
+      - 'v*.*.*'
+
+  # Trigger the workflow when a release is published or updated
+  release:
+    types: [published, created, edited]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Ensure the full repository history is fetched for tagging
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Run install 
+        run: pnpm install
+
+      - name: Run build
+        run: pnpm run build
+
+      - name: Commit and push dist folder
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          
+          # Commit the dist folder
+          git add dist
+          git commit -m "Add dist folder for release ${GITHUB_REF}"
+          
+          # Push the dist folder to the current tag (release) branch
+          git push origin HEAD:${GITHUB_REF} --force
+
+      - name: Create GitHub Release and upload assets
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: ./dist/**
+          token: ${{ secrets.GITHUB_TOKEN }}
