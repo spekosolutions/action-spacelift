@@ -11,6 +11,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
       - name: Run Spacelift Interface Action
         uses: ./ # Update with the path to your action
         with:
