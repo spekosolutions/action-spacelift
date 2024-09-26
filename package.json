@@ -31,5 +31,6 @@
   "engines": {
     "node": "20.x"
   },
+  "type": "module",
   "packageManager": "pnpm@9.11.0"
 }

@@ -23,13 +23,13 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.main = void 0;
 const core = __importStar(require("@actions/core"));
-const run_1 = require("./utils/run"); // Correct ES module syntax
+const run_1 = require("./utils/run");
 const spacectl_1 = require("./commands/spacectl");
 // Define the main function correctly
 const main = async () => {
     try {
-        // Use `await` for async calls without 'import'
         const binaryFolder = await (0, spacectl_1.installAndGetFolder)();
         core.addPath(binaryFolder);
         core.info("Added spacectl to PATH: " + binaryFolder);
@@ -48,6 +48,7 @@ const main = async () => {
         console.error(e);
     }
 };
+exports.main = main;
 // Ensure proper handling of errors in the async context
 main().catch((e) => {
     core.setFailed(e.message);
