@@ -1,5 +1,8 @@
 name: action-spacelift
 description: SpaceLift GraphQL Interface action
+branding:
+  icon: 'arrow-up'
+  color: 'blue'
 
 inputs:
   command:
