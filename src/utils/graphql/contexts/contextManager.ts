@@ -112,8 +112,8 @@ class ContextManager extends GraphQLManager {
     inputs: any, 
     replaceConfigElements: boolean = false
   ): Promise<void> {
-    // Ensure that ID is only added when updating an existing context
-    const mutationType = contextId ? 'contextUpdateV2' : 'contextCreateV2'  // Use correct mutation names
+    const mutationType = contextId ? 'contextUpdateV2' : 'contextCreateV2'
+    
     const mutationQuery = `
       mutation ${mutationType}($input: ContextInput!${contextId ? ', $id: ID!' : ''}${contextId ? ', $replaceConfigElements: Boolean' : ''}) {
         ${mutationType}(${contextId ? 'id: $id, ' : ''}input: $input${contextId ? ', replaceConfigElements: $replaceConfigElements' : ''}) {
@@ -123,14 +123,15 @@ class ContextManager extends GraphQLManager {
         }
       }
     `
-
+    
+    // Only add non-null values to the variables object
     const variables: any = {
       input: {
-        name: inputs.name, // Required
-        description: inputs.description || '', // Optional
-        space: inputs.space || null, // Optional
-        labels: inputs.labels || [], // Required
-        configAttachments: inputs.configAttachments || [], // Required
+        name: inputs.name,
+        description: inputs.description || '', // Set defaults for optional fields
+        space: inputs.space || null,
+        labels: inputs.labels || [],
+        configAttachments: inputs.configAttachments || [],
         hooks: {
           beforeInit: inputs.hooks?.beforeInit || [],
           afterInit: inputs.hooks?.afterInit || [],
@@ -147,13 +148,12 @@ class ContextManager extends GraphQLManager {
         stackAttachments: inputs.stackAttachments || [], // Optional
       },
     }
-
-    // Add the ID and replaceConfigElements only when updating
+  
     if (contextId) {
       variables.id = contextId
       variables.replaceConfigElements = replaceConfigElements
     }
-
+  
     await this.sendRequest({ query: mutationQuery, variables })
     core.info(`Context ${contextId ? 'updated' : 'created'} successfully.`)
   }
@@ -164,7 +164,7 @@ class ContextManager extends GraphQLManager {
     const existingContext = await this.getContextById()
 
     if (existingContext) {
-      core.info(`Context with space ID '${spaceId}' already exists: ${existingContext.id}`)
+      core.info(`Context with ID ${existingContext.id} already exists...`)
 
       // Detect changes in config, labels, and hooks
       const hasChanges = this.detectChanges(existingContext, inputs)
