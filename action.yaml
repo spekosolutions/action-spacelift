@@ -1,0 +1,38 @@
+name: action-spacelift
+description: SpaceLift GraphQL Interface action
+
+inputs:
+  command:
+    description: "Spacelift command."
+    required: true
+  region:
+    description: "region"
+    required: true
+  env:
+    description: "Environment"
+    required: true
+  integration_name:
+    description: "Integration name"
+    required: true
+  service_name:
+    description: "Service name"
+    required: true
+  label_prefix:
+    description: "Label prefix"
+    required: false
+    default: "aws:services"
+  label_postfix:
+    description: "Label postfix"
+    required: true
+  github-token:
+    description: "GitHub token"
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  outputs: 
+    description: "SpaceLift outputs"
+    
+runs:
+  using: 'node20'
+  main: 'dist/index.js'

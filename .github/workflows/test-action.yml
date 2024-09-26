@@ -1,0 +1,23 @@
+name: Test Spacelift Interface
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Run Spacelift Interface Action
+        uses: ./ # Update with the path to your action
+        with:
+          spacelift_url: 'test.app.spacelift.io'
+          command: 'preview' # Replace with the actual command you want to test
+          region: 'use1' # Replace with your region
+          env: 'dev' # Replace with your environment
+          integration_name: 'your-integration-name' # Replace with your integration name
+          service_name: 'service-name' # Replace acwith your service name
+          label_postfix: 'service' # Replace with your label postfix
