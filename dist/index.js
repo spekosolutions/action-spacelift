@@ -312,7 +312,24 @@ class ContextManager extends graphQLManager_1.default {
         try {
             const fileContents = fs_1.default.readFileSync(this.yamlFilePath, 'utf8');
             const parsedYaml = yaml_1.default.parse(fileContents);
-            // Merge additional inputs (spaceId and contextName)
+            // Perform validation on the YAML content to ensure required fields are present
+            if (!parsedYaml.configAttachments || parsedYaml.configAttachments.length === 0) {
+                core.setFailed("Missing 'configAttachments' in YAML.");
+                throw new Error("Missing 'configAttachments' in YAML.");
+            }
+            // Check for other critical values in configAttachments
+            parsedYaml.configAttachments.forEach((config) => {
+                if (!config.id || !config.value) {
+                    core.setFailed("Each configAttachment must have a valid 'id' and 'value'.");
+                    throw new Error("Each configAttachment must have a valid 'id' and 'value'.");
+                }
+                if (!config.type) {
+                    config.type = 'ENVIRONMENT_VARIABLE'; // Default to ENVIRONMENT_VARIABLE if not provided
+                }
+                if (config.writeOnly === undefined) {
+                    config.writeOnly = true; // Default to true if not provided
+                }
+            });
             return {
                 ...parsedYaml,
                 space: spaceId,
@@ -365,7 +382,6 @@ class ContextManager extends graphQLManager_1.default {
     }
     // Compare YAML config and labels with the existing context and update if necessary
     detectChanges(existingContext, newConfig) {
-        // Ensure all fields are defined before comparison
         const existingConfig = existingContext.config?.reduce((acc, elem) => {
             acc[elem.id] = elem.value;
             return acc;
@@ -375,11 +391,11 @@ class ContextManager extends graphQLManager_1.default {
         const configChanges = Object.keys(newConfigAttachments).some((key) => {
             return existingConfig[key] !== newConfigAttachments[key];
         });
-        // Detect label changes (ensure labels exist in both)
+        // Detect label changes
         const existingLabels = existingContext.labels || [];
         const newLabels = newConfig.labels || [];
         const labelChanges = newLabels.some((label) => !existingLabels.includes(label));
-        // Detect hook changes (ensure hooks exist in both)
+        // Detect hook changes
         const existingHooks = existingContext.hooks || {};
         const newHooks = newConfig.hooks || {};
         const hookChanges = JSON.stringify(existingHooks) !== JSON.stringify(newHooks);
@@ -397,14 +413,20 @@ class ContextManager extends graphQLManager_1.default {
         }
       }
     `;
-        // Only add non-null values to the variables object
         const variables = {
             input: {
-                name: inputs.name,
-                description: inputs.description || '', // Set defaults for optional fields
-                space: inputs.space || null,
-                labels: inputs.labels || [],
-                configAttachments: inputs.configAttachments || [],
+                name: inputs.name, // Required
+                description: inputs.description || '', // Optional
+                space: inputs.space || null, // Optional
+                labels: inputs.labels || [], // Required
+                configAttachments: inputs.configAttachments.map((config) => ({
+                    id: config.id, // Must be provided
+                    type: config.type || 'ENVIRONMENT_VARIABLE', // Default to 'ENVIRONMENT_VARIABLE'
+                    value: config.value || '', // Ensure value is provided
+                    writeOnly: config.writeOnly !== undefined ? config.writeOnly : true, // Default to 'true'
+                    description: config.description || '', // Optional
+                    fileMode: config.fileMode || '0644', // Optional, provide a default if needed
+                })) || [], // Required
                 hooks: {
                     beforeInit: inputs.hooks?.beforeInit || [],
                     afterInit: inputs.hooks?.afterInit || [],
@@ -421,10 +443,12 @@ class ContextManager extends graphQLManager_1.default {
                 stackAttachments: inputs.stackAttachments || [], // Optional
             },
         };
+        // If updating, add ID and replaceConfigElements
         if (contextId) {
             variables.id = contextId;
             variables.replaceConfigElements = replaceConfigElements;
         }
+        core.info(`Variables before mutation: ${JSON.stringify(variables)}`);
         await this.sendRequest({ query: mutationQuery, variables });
         core.info(`Context ${contextId ? 'updated' : 'created'} successfully.`);
     }
