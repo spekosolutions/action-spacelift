@@ -2,12 +2,14 @@ name: Release Drafter
 
 on:
   push:
-    tags:
-      - 'v*.*.*'  # Version tags
+    # branches to consider in the event; optional, defaults to all
+    branches:
+      - master
 
-  release:
-    types: [published, created]
-
+  pull_request:
+    # Only following types are handled by the action, but one can default to all as well
+    types: [opened, reopened, synchronize]
+  
 permissions:
   contents: read
 
@@ -34,3 +36,5 @@ jobs:
         #   disable-autolabeler: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          commitish: main
