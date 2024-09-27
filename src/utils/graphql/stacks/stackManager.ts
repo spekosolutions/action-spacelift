@@ -17,13 +17,14 @@ class StackManager extends GraphQLManager {
     let newStack: { id: string } | undefined
 
     if (existingStack) {
-      core.info(`Updating existing stack: ${stackName}`)
-      await this.waitForStackToBeReady(stackName)
-      await this.updateStack(existingStack.id, customSpace, inputs)
+      core.info(`Updating existing stack: ${stackName}`);
+      await this.waitForStackRunsToFinish(stackName);  // Ensure runs are finished
+      await this.waitForStackToBeReady(stackName);
+      await this.updateStack(existingStack.id, customSpace, inputs);
     } else {
-      core.info(`Creating new stack: ${stackName}`)
-      newStack = await this.createStack(stackName, customSpace, inputs)
-      await this.waitForStackToBeReady(stackName)
+      core.info(`Creating new stack: ${stackName}`);
+      newStack = await this.createStack(stackName, customSpace, inputs);
+      await this.waitForStackToBeReady(stackName);
     }
 
     const stackId = existingStack?.id || newStack?.id
