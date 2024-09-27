@@ -32,40 +32,42 @@ export const run = async (inputs: Inputs): Promise<void> => {
     const uniqueTag = generateUniqueTag()
     core.info(`Generated unique tag: ${uniqueTag}`)
 
-    // Declare the spaceId variable to be used later
-    let spaceId: string
+    if (command.includes('deploy')) {
+      // Declare the spaceId variable to be used later
+      let spaceId: string
 
-    // Create service space and upsert the stack
-    const spaceManager = new SpaceManager()
+      // Create service space and upsert the stack
+      const spaceManager = new SpaceManager()
 
-    try {
-      spaceId = await spaceManager.createServiceSpace(inputs)
-    } catch (error) {
-      console.error('Error creating service space:', error)
-      throw error
-    }
+      try {
+        spaceId = await spaceManager.createServiceSpace(inputs)
+      } catch (error) {
+        console.error('Error creating service space:', error)
+        throw error
+      }
 
-    try {
-      // Initialize the ContextManager with required values
-      const contextManager = new ContextManager();
-      
-      // Call createOrUpdateContext without passing yamlFilePath or contextName
-      const result = await contextManager.createOrUpdateContext(spaceId, inputs);
-      console.log('Context result:', result);
-    } catch (error) {
-      console.error(`Failed to manage context: ${(error as Error).message}`);
-    }
+      try {
+        // Initialize the ContextManager with required values
+        const contextManager = new ContextManager();
+        
+        // Call createOrUpdateContext without passing yamlFilePath or contextName
+        const result = await contextManager.createOrUpdateContext(spaceId, inputs);
+        console.log('Context result:', result);
+      } catch (error) {
+        console.error(`Failed to manage context: ${(error as Error).message}`);
+      }
 
-    try {
-      // Initialize the StackManager with the Spacelift URL and bearer token
-      const graphqlStackManager = new GraphQLStackManager();
-  
-      // Call the upsertStack method to create or update the stack
-      await graphqlStackManager.upsertStack(stackName, spaceId, integration_name, inputs);
-  
-      console.log(`Stack "${stackName}" was successfully upserted.`);
-    } catch (error) {
-      console.error(`Failed to upsert stack: ${(error as Error).message}`);
+      try {
+        // Initialize the StackManager with the Spacelift URL and bearer token
+        const graphqlStackManager = new GraphQLStackManager();
+    
+        // Call the upsertStack method to create or update the stack
+        await graphqlStackManager.upsertStack(stackName, spaceId, integration_name, inputs);
+    
+        console.log(`Stack "${stackName}" was successfully upserted.`);
+      } catch (error) {
+        console.error(`Failed to upsert stack: ${(error as Error).message}`);
+      }
     }
 
     // Run command on stack
