@@ -113,6 +113,9 @@ class StackManager extends GraphQLManager {
                         runs {
                             id
                             state
+                            finished
+                            createdAt
+                            isMostRecent
                         }
                     }
                 }
@@ -129,19 +132,22 @@ class StackManager extends GraphQLManager {
 
         const runs = response?.stack?.runs || []
 
-        // Sort runs by ID (assuming lexicographical order reflects creation order)
-        const sortedRuns = runs.sort((a: any, b: any) => a.id.localeCompare(b.id))
+        // Find the most recent run either by 'isMostRecent' flag or sorting by 'createdAt'
+        let mostRecentRun = runs.find((run: any) => run.isMostRecent)
 
-        // Get the last run
-        const lastRun = sortedRuns[sortedRuns.length - 1]
+        if (!mostRecentRun) {
+          // If no run is marked as most recent, sort by 'createdAt'
+          runs.sort((a: any, b: any) => b.createdAt - a.createdAt)
+          mostRecentRun = runs[0]
+        }
 
-        if (lastRun.state === 'SUCCESS' || lastRun.state === 'FAILURE') {
-          core.info(`Last run for stack ${stackId} has finished with state: ${lastRun.state}`)
-          return // Exit the loop as we have the final state of the last run
+        if (mostRecentRun.finished) {
+          core.info(`Most recent run for stack ${stackId} has finished with state: ${mostRecentRun.state}`)
+          return // Exit the loop as the most recent run has finished
         }
 
         if (Date.now() - startTime > timeout) {
-          throw new Error(`Timeout waiting for runs to finish for stack: ${stackId}`)
+          throw new Error(`Timeout waiting for most recent run to finish for stack: ${stackId}`)
         }
 
         // Sleep before the next check

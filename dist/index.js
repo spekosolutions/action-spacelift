@@ -925,6 +925,9 @@ class StackManager extends graphQLManager_1.default {
                         runs {
                             id
                             state
+                            finished
+                            createdAt
+                            isMostRecent
                         }
                     }
                 }
@@ -937,16 +940,19 @@ class StackManager extends graphQLManager_1.default {
                 core.info(`Stack details: ${JSON.stringify(response, null, 2)}`);
                 core.info(`Response received for waitForStackRunsToFinish.`);
                 const runs = response?.stack?.runs || [];
-                // Sort runs by ID (assuming lexicographical order reflects creation order)
-                const sortedRuns = runs.sort((a, b) => a.id.localeCompare(b.id));
-                // Get the last run
-                const lastRun = sortedRuns[sortedRuns.length - 1];
-                if (lastRun.state === 'SUCCESS' || lastRun.state === 'FAILURE') {
-                    core.info(`Last run for stack ${stackId} has finished with state: ${lastRun.state}`);
-                    return; // Exit the loop as we have the final state of the last run
+                // Find the most recent run either by 'isMostRecent' flag or sorting by 'createdAt'
+                let mostRecentRun = runs.find((run) => run.isMostRecent);
+                if (!mostRecentRun) {
+                    // If no run is marked as most recent, sort by 'createdAt'
+                    runs.sort((a, b) => b.createdAt - a.createdAt);
+                    mostRecentRun = runs[0];
+                }
+                if (mostRecentRun.finished) {
+                    core.info(`Most recent run for stack ${stackId} has finished with state: ${mostRecentRun.state}`);
+                    return; // Exit the loop as the most recent run has finished
                 }
                 if (Date.now() - startTime > timeout) {
-                    throw new Error(`Timeout waiting for runs to finish for stack: ${stackId}`);
+                    throw new Error(`Timeout waiting for most recent run to finish for stack: ${stackId}`);
                 }
                 // Sleep before the next check
                 await new Promise((resolve) => setTimeout(resolve, 10000));
