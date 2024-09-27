@@ -99,3 +99,5 @@ lib/
 
 # Only release tag contains dist directory
 
+# VSCode
+.vscode/

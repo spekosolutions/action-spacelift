@@ -59,9 +59,9 @@ const run = async (inputs) => {
         }
         try {
             // Initialize the ContextManager with required values
-            const contextManager = new contextManager_1.default(service_name, env);
+            const contextManager = new contextManager_1.default();
             // Call createOrUpdateContext without passing yamlFilePath or contextName
-            const result = await contextManager.createOrUpdateContext(spaceId);
+            const result = await contextManager.createOrUpdateContext(spaceId, inputs);
             console.log('Context result:', result);
         }
         catch (error) {
