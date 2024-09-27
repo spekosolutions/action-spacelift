@@ -342,7 +342,7 @@ class ContextManager extends graphQLManager_1.default {
         }
     }
     // Method to query the existing context by ID
-    async getContextById(contextName) {
+    async getContextById(contextID) {
         const query = {
             operationName: 'GetContext',
             query: `
@@ -375,11 +375,11 @@ class ContextManager extends graphQLManager_1.default {
         }
       }
     `,
-            variables: { id: contextName },
+            variables: { id: contextID },
         };
         try {
             // Log the query and variables
-            core.info(`Executing GraphQL query to get context by ID: ${contextName}`);
+            core.info(`Executing GraphQL query to get context by ID: ${contextID}`);
             core.info(`Query variables: ${JSON.stringify(query.variables)}`);
             const response = await this.sendRequest(query);
             // Log the full response, whether it contains a context or not
@@ -389,13 +389,13 @@ class ContextManager extends graphQLManager_1.default {
                 return response.context;
             }
             else {
-                core.info(`No context found for ID: ${contextName}. Response: ${JSON.stringify(response)}`);
+                core.info(`No context found for ID: ${contextID}. Response: ${JSON.stringify(response)}`);
                 return null;
             }
         }
         catch (error) {
             // Log the error if the GraphQL query fails
-            core.error(`Failed to get context by ID: ${contextName}. Error: ${error.message}`);
+            core.error(`Failed to get context by ID: ${contextID}. Error: ${error.message}`);
             throw error;
         }
     }
@@ -476,7 +476,7 @@ class ContextManager extends graphQLManager_1.default {
         const { label_prefix, env, region, service_name, label_postfix } = inputs;
         const contextName = `${label_prefix}:${env}:${region}:${service_name}:${label_postfix}`;
         // Transformed context name with hyphens for querying and creation
-        const contextID = `${label_prefix}-${env}-${region}-${service_name}-${label_postfix}`;
+        const contextID = contextName.replace(/:/g, '-');
         const contextValues = this.loadEnvValuesFromYaml(spaceId, contextName);
         const existingContext = await this.getContextById(contextID);
         if (existingContext) {
