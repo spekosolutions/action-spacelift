@@ -5,20 +5,16 @@ import yaml from 'yaml'
 
 class ContextManager extends GraphQLManager {
   private yamlFilePath: string
-  private contextName: string
-  
+
   constructor(
-    serviceName: string,
-    env: string,
     yamlFilePath: string = './deployment/contexts.yml',
   ) {
     super()
-    this.contextName = `${serviceName}-${env}-context`
     this.yamlFilePath = yamlFilePath
   }
 
   // Method to load YAML and merge with additional inputs (spaceId)
-  private loadEnvValuesFromYaml(spaceId: string): any {
+  private loadEnvValuesFromYaml(spaceId: string, contextName: string): any {
     try {
       const fileContents = fs.readFileSync(this.yamlFilePath, 'utf8')
       const parsedYaml = yaml.parse(fileContents)
@@ -46,7 +42,7 @@ class ContextManager extends GraphQLManager {
       return {
         ...parsedYaml,
         space: spaceId,
-        name: this.contextName,
+        name: contextName,
       }
     } catch (error) {
       core.setFailed(`Failed to load env values from YAML: ${(error as Error).message}`)
@@ -55,7 +51,7 @@ class ContextManager extends GraphQLManager {
   }
 
   // Method to query the existing context by ID
-  async getContextById(): Promise<any | null> {
+  async getContextById(contextName: string): Promise<any | null> {
     const query = {
       operationName: 'GetContext',
       query: `
@@ -88,7 +84,7 @@ class ContextManager extends GraphQLManager {
         }
       }
     `,
-      variables: { id: this.contextName },
+      variables: { id: contextName },
     }
 
     const response = await this.sendRequest(query)
@@ -185,19 +181,21 @@ class ContextManager extends GraphQLManager {
   }
 
   // Main method to create or update the context based on changes
-  async createOrUpdateContext(spaceId: string): Promise<any> {
-    const inputs = this.loadEnvValuesFromYaml(spaceId)
-    const existingContext = await this.getContextById()
+  async createOrUpdateContext(spaceId: string, inputs: any): Promise<any> {
+    const { label_prefix, env, region, service_name, label_postfix } = inputs
+    const contextName = `${label_prefix}:${env}:${region}:${service_name}:${label_postfix}`
+    const contextValues = this.loadEnvValuesFromYaml(spaceId, contextName)
+    const existingContext = await this.getContextById(contextName)
 
     if (existingContext) {
       core.info(`Context with ID ${existingContext.id} already exists...`)
 
       // Detect changes in config, labels, and hooks
-      const hasChanges = this.detectChanges(existingContext, inputs)
+      const hasChanges = this.detectChanges(existingContext, contextValues)
 
       if (hasChanges) {
         core.info(`Changes detected in context, updating...`)
-        await this.sendContextMutation(existingContext.id, inputs, true) // Update existing context
+        await this.sendContextMutation(existingContext.id, contextValues, true) // Update existing context
       } else {
         core.info(`No changes detected, skipping update.`)
       }
@@ -206,7 +204,7 @@ class ContextManager extends GraphQLManager {
     }
 
     // Create new context
-    await this.sendContextMutation(undefined, inputs)
+    await this.sendContextMutation(undefined, contextValues)
     core.info(`Context created successfully.`)
   }
 }

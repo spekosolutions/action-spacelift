@@ -3,7 +3,7 @@
   "scripts": {
     "format": "prettier --write **/*.ts",
     "lint": "eslint .",
-    "build": "tsc && ncc build --source-map --license licenses.txt dist/main.js",
+    "build": "rm -rf ./dist && tsc && ncc build --source-map --license licenses.txt dist/main.js",
     "test": "jest"
   },
   "dependencies": {
