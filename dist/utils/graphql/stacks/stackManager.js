@@ -121,15 +121,15 @@ class StackManager extends graphQLManager_1.default {
         while (true) {
             const query = {
                 query: `
-          query GetStack($id: ID!) {
-            stack(id: $id) {
-              runs {
-                id
-                state
-              }
-            }
-          }
-        `,
+                query GetStack($id: ID!) {
+                    stack(id: $id) {
+                        runs {
+                            id
+                            state
+                        }
+                    }
+                }
+            `,
                 variables: { id: stackId },
             };
             try {
@@ -138,14 +138,18 @@ class StackManager extends graphQLManager_1.default {
                 core.info(`Stack details: ${JSON.stringify(response, null, 2)}`);
                 core.info(`Response received for waitForStackRunsToFinish.`);
                 const runs = response?.stack?.runs || [];
-                const activeRuns = runs.filter((run) => run.state !== 'SUCCESS' && run.state !== 'FAILURE');
-                if (activeRuns.length === 0) {
-                    core.info(`All runs for stack ${stackId} have finished.`);
-                    return;
+                // Sort runs by ID (assuming lexicographical order reflects creation order)
+                const sortedRuns = runs.sort((a, b) => a.id.localeCompare(b.id));
+                // Get the last run
+                const lastRun = sortedRuns[sortedRuns.length - 1];
+                if (lastRun.state === 'SUCCESS' || lastRun.state === 'FAILURE') {
+                    core.info(`Last run for stack ${stackId} has finished with state: ${lastRun.state}`);
+                    return; // Exit the loop as we have the final state of the last run
                 }
                 if (Date.now() - startTime > timeout) {
                     throw new Error(`Timeout waiting for runs to finish for stack: ${stackId}`);
                 }
+                // Sleep before the next check
                 await new Promise((resolve) => setTimeout(resolve, 10000));
             }
             catch (error) {
