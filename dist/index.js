@@ -818,6 +818,7 @@ class StackManager extends graphQLManager_1.default {
         let newStack;
         if (existingStack) {
             core.info(`Updating existing stack: ${stackName}`);
+            await this.waitForStackRunsToFinish(stackName); // Ensure runs are finished
             await this.waitForStackToBeReady(stackName);
             await this.updateStack(existingStack.id, customSpace, inputs);
         }
