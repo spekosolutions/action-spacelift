@@ -475,8 +475,10 @@ class ContextManager extends graphQLManager_1.default {
     async createOrUpdateContext(spaceId, inputs) {
         const { label_prefix, env, region, service_name, label_postfix } = inputs;
         const contextName = `${label_prefix}:${env}:${region}:${service_name}:${label_postfix}`;
+        // Transformed context name with hyphens for querying and creation
+        const contextID = `${label_prefix}-${env}-${region}-${service_name}-${label_postfix}`;
         const contextValues = this.loadEnvValuesFromYaml(spaceId, contextName);
-        const existingContext = await this.getContextById(contextName);
+        const existingContext = await this.getContextById(contextID);
         if (existingContext) {
             core.info(`Context with ID ${existingContext.id} already exists...`);
             // Detect changes in config, labels, and hooks
