@@ -303,13 +303,12 @@ const core = __importStar(__nccwpck_require__(9093));
 const fs_1 = __importDefault(__nccwpck_require__(7147));
 const yaml_1 = __importDefault(__nccwpck_require__(7797));
 class ContextManager extends graphQLManager_1.default {
-    constructor(serviceName, env, yamlFilePath = './deployment/contexts.yml') {
+    constructor(yamlFilePath = './deployment/contexts.yml') {
         super();
-        this.contextName = `${serviceName}-${env}-context`;
         this.yamlFilePath = yamlFilePath;
     }
     // Method to load YAML and merge with additional inputs (spaceId)
-    loadEnvValuesFromYaml(spaceId) {
+    loadEnvValuesFromYaml(spaceId, contextName) {
         try {
             const fileContents = fs_1.default.readFileSync(this.yamlFilePath, 'utf8');
             const parsedYaml = yaml_1.default.parse(fileContents);
@@ -334,7 +333,7 @@ class ContextManager extends graphQLManager_1.default {
             return {
                 ...parsedYaml,
                 space: spaceId,
-                name: this.contextName,
+                name: contextName,
             };
         }
         catch (error) {
@@ -343,7 +342,7 @@ class ContextManager extends graphQLManager_1.default {
         }
     }
     // Method to query the existing context by ID
-    async getContextById() {
+    async getContextById(contextName) {
         const query = {
             operationName: 'GetContext',
             query: `
@@ -376,7 +375,7 @@ class ContextManager extends graphQLManager_1.default {
         }
       }
     `,
-            variables: { id: this.contextName },
+            variables: { id: contextName },
         };
         const response = await this.sendRequest(query);
         return response?.context || null;
@@ -454,16 +453,18 @@ class ContextManager extends graphQLManager_1.default {
         core.info(`Context ${contextId ? 'updated' : 'created'} successfully.`);
     }
     // Main method to create or update the context based on changes
-    async createOrUpdateContext(spaceId) {
-        const inputs = this.loadEnvValuesFromYaml(spaceId);
-        const existingContext = await this.getContextById();
+    async createOrUpdateContext(spaceId, inputs) {
+        const { label_prefix, env, region, service_name, label_postfix } = inputs;
+        const contextName = `${label_prefix}:${env}:${region}:${service_name}:${label_postfix}`;
+        const contextValues = this.loadEnvValuesFromYaml(spaceId, contextName);
+        const existingContext = await this.getContextById(contextName);
         if (existingContext) {
             core.info(`Context with ID ${existingContext.id} already exists...`);
             // Detect changes in config, labels, and hooks
-            const hasChanges = this.detectChanges(existingContext, inputs);
+            const hasChanges = this.detectChanges(existingContext, contextValues);
             if (hasChanges) {
                 core.info(`Changes detected in context, updating...`);
-                await this.sendContextMutation(existingContext.id, inputs, true); // Update existing context
+                await this.sendContextMutation(existingContext.id, contextValues, true); // Update existing context
             }
             else {
                 core.info(`No changes detected, skipping update.`);
@@ -471,7 +472,7 @@ class ContextManager extends graphQLManager_1.default {
             return existingContext; // Return the existing context
         }
         // Create new context
-        await this.sendContextMutation(undefined, inputs);
+        await this.sendContextMutation(undefined, contextValues);
         core.info(`Context created successfully.`);
     }
 }
@@ -1069,9 +1070,9 @@ const run = async (inputs) => {
         }
         try {
             // Initialize the ContextManager with required values
-            const contextManager = new contextManager_1.default(service_name, env);
+            const contextManager = new contextManager_1.default();
             // Call createOrUpdateContext without passing yamlFilePath or contextName
-            const result = await contextManager.createOrUpdateContext(spaceId);
+            const result = await contextManager.createOrUpdateContext(spaceId, inputs);
             console.log('Context result:', result);
         }
         catch (error) {
