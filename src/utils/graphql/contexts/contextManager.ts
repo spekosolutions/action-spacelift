@@ -6,9 +6,7 @@ import yaml from 'yaml'
 class ContextManager extends GraphQLManager {
   private yamlFilePath: string
 
-  constructor(
-    yamlFilePath: string = './deployment/contexts.yml',
-  ) {
+  constructor(yamlFilePath: string = './deployment/contexts.yml') {
     super()
     this.yamlFilePath = yamlFilePath
   }
@@ -87,16 +85,37 @@ class ContextManager extends GraphQLManager {
       variables: { id: contextName },
     }
 
-    const response = await this.sendRequest(query)
-    return response?.context || null
+    try {
+      // Log the query and variables
+      core.info(`Executing GraphQL query to get context by ID: ${contextName}`)
+      core.info(`Query variables: ${JSON.stringify(query.variables)}`)
+
+      const response = await this.sendRequest(query)
+
+      // Log the full response, whether it contains a context or not
+      core.info(`Full GraphQL response: ${JSON.stringify(response)}`)
+
+      if (response?.context) {
+        core.info(`Context found: ID = ${response.context.id}, Name = ${response.context.name}`)
+        return response.context
+      } else {
+        core.info(`No context found for ID: ${contextName}. Response: ${JSON.stringify(response)}`)
+        return null
+      }
+    } catch (error) {
+      // Log the error if the GraphQL query fails
+      core.error(`Failed to get context by ID: ${contextName}. Error: ${(error as Error).message}`)
+      throw error
+    }
   }
 
   // Compare YAML config and labels with the existing context and update if necessary
   private detectChanges(existingContext: any, newConfig: any): boolean {
-    const existingConfig = existingContext.config?.reduce((acc: any, elem: any) => {
-      acc[elem.id] = elem.value
-      return acc
-    }, {}) || {}
+    const existingConfig =
+      existingContext.config?.reduce((acc: any, elem: any) => {
+        acc[elem.id] = elem.value
+        return acc
+      }, {}) || {}
 
     const newConfigAttachments = newConfig.configAttachments || {}
 
@@ -122,9 +141,9 @@ class ContextManager extends GraphQLManager {
 
   // Method to send mutation, either for update or create
   private async sendContextMutation(
-    contextId: string | undefined, 
-    inputs: any, 
-    replaceConfigElements: boolean = false
+    contextId: string | undefined,
+    inputs: any,
+    replaceConfigElements: boolean = false,
   ): Promise<void> {
     const mutationType = contextId ? 'contextUpdateV2' : 'contextCreateV2'
     const mutationQuery = `
@@ -143,14 +162,15 @@ class ContextManager extends GraphQLManager {
         description: inputs.description || '', // Optional
         space: inputs.space || null, // Optional
         labels: inputs.labels || [], // Required
-        configAttachments: inputs.configAttachments.map((config: any) => ({
-          id: config.id, // Must be provided
-          type: config.type || 'ENVIRONMENT_VARIABLE', // Default to 'ENVIRONMENT_VARIABLE'
-          value: config.value || '', // Ensure value is provided
-          writeOnly: config.writeOnly !== undefined ? config.writeOnly : true, // Default to 'true'
-          description: config.description || '', // Optional
-          fileMode: config.fileMode || '0644', // Optional, provide a default if needed
-        })) || [], // Required
+        configAttachments:
+          inputs.configAttachments.map((config: any) => ({
+            id: config.id, // Must be provided
+            type: config.type || 'ENVIRONMENT_VARIABLE', // Default to 'ENVIRONMENT_VARIABLE'
+            value: config.value || '', // Ensure value is provided
+            writeOnly: config.writeOnly !== undefined ? config.writeOnly : true, // Default to 'true'
+            description: config.description || '', // Optional
+            fileMode: config.fileMode || '0644', // Optional, provide a default if needed
+          })) || [], // Required
         hooks: {
           beforeInit: inputs.hooks?.beforeInit || [],
           afterInit: inputs.hooks?.afterInit || [],
@@ -204,6 +224,7 @@ class ContextManager extends GraphQLManager {
     }
 
     // Create new context
+    core.info(`Context ${contextName} doesn't exist, creating...`)
     await this.sendContextMutation(undefined, contextValues)
     core.info(`Context created successfully.`)
   }

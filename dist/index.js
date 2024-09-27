@@ -377,8 +377,27 @@ class ContextManager extends graphQLManager_1.default {
     `,
             variables: { id: contextName },
         };
-        const response = await this.sendRequest(query);
-        return response?.context || null;
+        try {
+            // Log the query and variables
+            core.info(`Executing GraphQL query to get context by ID: ${contextName}`);
+            core.info(`Query variables: ${JSON.stringify(query.variables)}`);
+            const response = await this.sendRequest(query);
+            // Log the full response, whether it contains a context or not
+            core.info(`Full GraphQL response: ${JSON.stringify(response)}`);
+            if (response?.context) {
+                core.info(`Context found: ID = ${response.context.id}, Name = ${response.context.name}`);
+                return response.context;
+            }
+            else {
+                core.info(`No context found for ID: ${contextName}. Response: ${JSON.stringify(response)}`);
+                return null;
+            }
+        }
+        catch (error) {
+            // Log the error if the GraphQL query fails
+            core.error(`Failed to get context by ID: ${contextName}. Error: ${error.message}`);
+            throw error;
+        }
     }
     // Compare YAML config and labels with the existing context and update if necessary
     detectChanges(existingContext, newConfig) {
@@ -472,6 +491,7 @@ class ContextManager extends graphQLManager_1.default {
             return existingContext; // Return the existing context
         }
         // Create new context
+        core.info(`Context ${contextName} doesn't exist, creating...`);
         await this.sendContextMutation(undefined, contextValues);
         core.info(`Context created successfully.`);
     }
