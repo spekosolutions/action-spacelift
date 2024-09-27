@@ -1,4 +1,4 @@
-import { main } from '../src/main.js';
+import { main } from '../src/main';
 import * as core from '@actions/core';
 import * as github from '@actions/github';
 import { installAndGetFolder } from '../src/commands/spacectl';
