@@ -70,7 +70,7 @@ class ContextManager extends graphQLManager_1.default {
         }
     }
     // Method to query the existing context by ID
-    async getContextById(contextName) {
+    async getContextById(contextID) {
         const query = {
             operationName: 'GetContext',
             query: `
@@ -103,10 +103,29 @@ class ContextManager extends graphQLManager_1.default {
         }
       }
     `,
-            variables: { id: contextName },
+            variables: { id: contextID },
         };
-        const response = await this.sendRequest(query);
-        return response?.context || null;
+        try {
+            // Log the query and variables
+            core.info(`Executing GraphQL query to get context by ID: ${contextID}`);
+            core.info(`Query variables: ${JSON.stringify(query.variables)}`);
+            const response = await this.sendRequest(query);
+            // Log the full response, whether it contains a context or not
+            core.info(`Full GraphQL response: ${JSON.stringify(response)}`);
+            if (response?.context) {
+                core.info(`Context found: ID = ${response.context.id}, Name = ${response.context.name}`);
+                return response.context;
+            }
+            else {
+                core.info(`No context found for ID: ${contextID}. Response: ${JSON.stringify(response)}`);
+                return null;
+            }
+        }
+        catch (error) {
+            // Log the error if the GraphQL query fails
+            core.error(`Failed to get context by ID: ${contextID}. Error: ${error.message}`);
+            throw error;
+        }
     }
     // Compare YAML config and labels with the existing context and update if necessary
     detectChanges(existingContext, newConfig) {
@@ -184,8 +203,10 @@ class ContextManager extends graphQLManager_1.default {
     async createOrUpdateContext(spaceId, inputs) {
         const { label_prefix, env, region, service_name, label_postfix } = inputs;
         const contextName = `${label_prefix}:${env}:${region}:${service_name}:${label_postfix}`;
+        // Transformed context name with hyphens for querying and creation
+        const contextID = contextName.replace(/:/g, '-');
         const contextValues = this.loadEnvValuesFromYaml(spaceId, contextName);
-        const existingContext = await this.getContextById(contextName);
+        const existingContext = await this.getContextById(contextID);
         if (existingContext) {
             core.info(`Context with ID ${existingContext.id} already exists...`);
             // Detect changes in config, labels, and hooks
@@ -200,6 +221,7 @@ class ContextManager extends graphQLManager_1.default {
             return existingContext; // Return the existing context
         }
         // Create new context
+        core.info(`Context ${contextName} doesn't exist, creating...`);
         await this.sendContextMutation(undefined, contextValues);
         core.info(`Context created successfully.`);
     }
