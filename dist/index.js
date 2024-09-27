@@ -927,7 +927,6 @@ class StackManager extends graphQLManager_1.default {
                             state
                             finished
                             createdAt
-                            isMostRecent
                         }
                     }
                 }
@@ -940,19 +939,14 @@ class StackManager extends graphQLManager_1.default {
                 core.info(`Stack details: ${JSON.stringify(response, null, 2)}`);
                 core.info(`Response received for waitForStackRunsToFinish.`);
                 const runs = response?.stack?.runs || [];
-                // Find the most recent run either by 'isMostRecent' flag or sorting by 'createdAt'
-                let mostRecentRun = runs.find((run) => run.isMostRecent);
-                if (!mostRecentRun) {
-                    // If no run is marked as most recent, sort by 'createdAt'
-                    runs.sort((a, b) => b.createdAt - a.createdAt);
-                    mostRecentRun = runs[0];
-                }
-                if (mostRecentRun.finished) {
-                    core.info(`Most recent run for stack ${stackId} has finished with state: ${mostRecentRun.state}`);
-                    return; // Exit the loop as the most recent run has finished
+                // Check if any run is not finished
+                const unfinishedRuns = runs.filter((run) => !run.finished);
+                if (unfinishedRuns.length === 0) {
+                    core.info(`All runs for stack ${stackId} have finished.`);
+                    return; // All runs are finished, so proceed
                 }
                 if (Date.now() - startTime > timeout) {
-                    throw new Error(`Timeout waiting for most recent run to finish for stack: ${stackId}`);
+                    throw new Error(`Timeout waiting for all runs to finish for stack: ${stackId}`);
                 }
                 // Sleep before the next check
                 await new Promise((resolve) => setTimeout(resolve, 10000));
