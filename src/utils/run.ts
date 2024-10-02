@@ -70,15 +70,15 @@ export const run = async (inputs: Inputs): Promise<void> => {
       }
     }
 
-    // // Run command on stack
-    // try {
-    //   const spacectlStackManager = new SpacectlStackManager();
-    //   await spacectlStackManager.runCommand(stackName, command);
-    //   await spacectlStackManager.getStackOutputs(stackName);
-    // } catch (error) {
-    //     core.setFailed(`An error occurred: ${(error as Error).message}`);
-    //     console.error(error);
-    // }
+    // Run command on stack
+    try {
+      const spacectlStackManager = new SpacectlStackManager();
+      await spacectlStackManager.runCommand(stackName, command);
+      await spacectlStackManager.getStackOutputs(stackName);
+    } catch (error) {
+        core.setFailed(`An error occurred: ${(error as Error).message}`);
+        console.error(error);
+    }
     
   } catch (error) {
     core.setFailed(`Action failed with error: ${(error as Error).message || error}`)
