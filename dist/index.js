@@ -1124,18 +1124,18 @@ const run = async (inputs) => {
                 core.error(`Failed to upsert stack: ${error.message}`);
             }
             // Introduce a delay to allow the stack to be fully ready before running commands
-            core.info('Waiting 5 seconds to ensure stack is ready...');
-            await delay(5000);
+            core.info('Waiting 30 seconds to ensure stack is ready...');
+            await delay(30000);
         }
         // Run command on stack
         try {
             const spacectlStackManager = new stackManager_2.default();
-            // core.info(`Running command: ${command} on stack: ${stackName}`);
-            // await spacectlStackManager.runCommand(stackName, command);
-            // core.info(`Command "${command}" ran successfully on stack "${stackName}"`);
-            // core.info(`Retrieving stack outputs for: ${stackName}`);
-            // const outputs = await spacectlStackManager.getStackOutputs(stackName);
-            // core.info(`Stack outputs: ${JSON.stringify(outputs)}`);
+            core.info(`Running command: ${command} on stack: ${stackName}`);
+            await spacectlStackManager.runCommand(stackName, command);
+            core.info(`Command "${command}" ran successfully on stack "${stackName}"`);
+            core.info(`Retrieving stack outputs for: ${stackName}`);
+            const outputs = await spacectlStackManager.getStackOutputs(stackName);
+            core.info(`Stack outputs: ${JSON.stringify(outputs)}`);
         }
         catch (error) {
             core.setFailed(`An error occurred while running command or getting outputs: ${error.message}`);
