@@ -19,6 +19,9 @@ const generateUniqueTag = (): string => {
   return Math.random().toString(36).substring(7)
 }
 
+// Helper to add a delay (5 seconds here, but you can adjust)
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 export const run = async (inputs: Inputs): Promise<void> => {
   try {
     // Destructure the necessary fields from inputs
@@ -42,7 +45,7 @@ export const run = async (inputs: Inputs): Promise<void> => {
       try {
         spaceId = await spaceManager.createServiceSpace(inputs)
       } catch (error) {
-        console.error('Error creating service space:', error)
+        core.error('Error creating service space:')
         throw error
       }
 
@@ -52,9 +55,9 @@ export const run = async (inputs: Inputs): Promise<void> => {
         
         // Call createOrUpdateContext without passing yamlFilePath or contextName
         const result = await contextManager.createOrUpdateContext(spaceId, inputs);
-        console.log('Context result:', result);
+        core.info(`Context result: ${JSON.stringify(result)}`);
       } catch (error) {
-        console.error(`Failed to manage context: ${(error as Error).message}`);
+        core.error(`Failed to manage context: ${(error as Error).message}`);
       }
 
       try {
@@ -64,20 +67,30 @@ export const run = async (inputs: Inputs): Promise<void> => {
         // Call the upsertStack method to create or update the stack
         await graphqlStackManager.upsertStack(stackName, spaceId, integration_name, inputs);
     
-        console.log(`Stack "${stackName}" was successfully upserted.`);
+        core.info(`Stack "${stackName}" was successfully upserted.`);
       } catch (error) {
-        console.error(`Failed to upsert stack: ${(error as Error).message}`);
+        core.error(`Failed to upsert stack: ${(error as Error).message}`);
       }
+
+      // Introduce a delay to allow the stack to be fully ready before running commands
+      core.info('Waiting 5 seconds to ensure stack is ready...');
+      await delay(5000);
     }
 
     // Run command on stack
     try {
       const spacectlStackManager = new SpacectlStackManager();
+      core.info(`Running command: ${command} on stack: ${stackName}`);
+
       await spacectlStackManager.runCommand(stackName, command);
-      await spacectlStackManager.getStackOutputs(stackName);
+      core.info(`Command "${command}" ran successfully on stack "${stackName}"`);
+
+      core.info(`Retrieving stack outputs for: ${stackName}`);
+      const outputs = await spacectlStackManager.getStackOutputs(stackName);
+      core.info(`Stack outputs: ${JSON.stringify(outputs)}`);
     } catch (error) {
-        core.setFailed(`An error occurred: ${(error as Error).message}`);
-        console.error(error);
+      core.setFailed(`An error occurred while running command or getting outputs: ${(error as Error).message}`);
+      core.error(error as Error);
     }
     
   } catch (error) {
