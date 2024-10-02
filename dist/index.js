@@ -847,7 +847,6 @@ class StackManager extends graphQLManager_1.default {
         else {
             core.info(`Creating new stack: ${stackName}`);
             newStack = await this.createStack(stackName, customSpace, inputs);
-            await this.waitForStackToBeReady(stackName);
         }
         const stackId = existingStack?.id || newStack?.id;
         if (stackId) {
@@ -884,6 +883,8 @@ class StackManager extends graphQLManager_1.default {
       }`,
             variables: { id: stackId, input: stackInput },
         };
+        await this.waitForStackRunsToFinish(stackId); // Ensure runs are finished
+        await this.waitForStackToBeReady(stackId);
         await this.sendRequest(mutationQuery);
         core.info(`Stack ${stackId} updated successfully.`);
     }
@@ -902,6 +903,8 @@ class StackManager extends graphQLManager_1.default {
         };
         const response = await this.sendRequest(mutationQuery);
         core.info(`New stack created: ${stackName}`);
+        await this.waitForStackRunsToFinish(stackName); // Ensure runs are finished
+        await this.waitForStackToBeReady(stackName);
         return response.stackCreate;
     }
     // Method to prepare the stack input
@@ -1015,6 +1018,8 @@ class StackManager extends graphQLManager_1.default {
             variables: { id: integrationId, stack: stackId, read, write },
         };
         await this.sendRequest(mutationQuery);
+        await this.waitForStackRunsToFinish(stackId); // Ensure runs are finished
+        await this.waitForStackToBeReady(stackId);
         core.info(`AWS integration attached to stack ${stackId}`);
     }
     // Method to get AWS integration by name

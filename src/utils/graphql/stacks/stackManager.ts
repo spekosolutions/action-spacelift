@@ -24,7 +24,6 @@ class StackManager extends GraphQLManager {
     } else {
       core.info(`Creating new stack: ${stackName}`)
       newStack = await this.createStack(stackName, customSpace, inputs)
-      await this.waitForStackToBeReady(stackName)
     }
 
     const stackId = existingStack?.id || newStack?.id
@@ -67,6 +66,9 @@ class StackManager extends GraphQLManager {
       variables: { id: stackId, input: stackInput },
     }
 
+    await this.waitForStackRunsToFinish(stackId) // Ensure runs are finished
+    await this.waitForStackToBeReady(stackId)
+
     await this.sendRequest(mutationQuery)
     core.info(`Stack ${stackId} updated successfully.`)
   }
@@ -88,6 +90,8 @@ class StackManager extends GraphQLManager {
 
     const response = await this.sendRequest(mutationQuery)
     core.info(`New stack created: ${stackName}`)
+    await this.waitForStackRunsToFinish(stackName) // Ensure runs are finished
+    await this.waitForStackToBeReady(stackName)
     return response.stackCreate
   }
 
@@ -219,7 +223,11 @@ class StackManager extends GraphQLManager {
       variables: { id: integrationId, stack: stackId, read, write },
     }
 
+    
     await this.sendRequest(mutationQuery)
+    await this.waitForStackRunsToFinish(stackId) // Ensure runs are finished
+    await this.waitForStackToBeReady(stackId)
+
     core.info(`AWS integration attached to stack ${stackId}`)
   }
 
