@@ -1130,12 +1130,12 @@ const run = async (inputs) => {
         // Run command on stack
         try {
             const spacectlStackManager = new stackManager_2.default();
-            core.info(`Running command: ${command} on stack: ${stackName}`);
-            await spacectlStackManager.runCommand(stackName, command);
-            core.info(`Command "${command}" ran successfully on stack "${stackName}"`);
-            core.info(`Retrieving stack outputs for: ${stackName}`);
-            const outputs = await spacectlStackManager.getStackOutputs(stackName);
-            core.info(`Stack outputs: ${JSON.stringify(outputs)}`);
+            // core.info(`Running command: ${command} on stack: ${stackName}`);
+            // await spacectlStackManager.runCommand(stackName, command);
+            // core.info(`Command "${command}" ran successfully on stack "${stackName}"`);
+            // core.info(`Retrieving stack outputs for: ${stackName}`);
+            // const outputs = await spacectlStackManager.getStackOutputs(stackName);
+            // core.info(`Stack outputs: ${JSON.stringify(outputs)}`);
         }
         catch (error) {
             core.setFailed(`An error occurred while running command or getting outputs: ${error.message}`);
