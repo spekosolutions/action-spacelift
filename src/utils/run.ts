@@ -46,16 +46,16 @@ export const run = async (inputs: Inputs): Promise<void> => {
         throw error
       }
 
-      // try {
-      //   // Initialize the ContextManager with required values
-      //   const contextManager = new ContextManager();
+      try {
+        // Initialize the ContextManager with required values
+        const contextManager = new ContextManager();
         
-      //   // Call createOrUpdateContext without passing yamlFilePath or contextName
-      //   const result = await contextManager.createOrUpdateContext(spaceId, inputs);
-      //   console.log('Context result:', result);
-      // } catch (error) {
-      //   console.error(`Failed to manage context: ${(error as Error).message}`);
-      // }
+        // Call createOrUpdateContext without passing yamlFilePath or contextName
+        const result = await contextManager.createOrUpdateContext(spaceId, inputs);
+        console.log('Context result:', result);
+      } catch (error) {
+        console.error(`Failed to manage context: ${(error as Error).message}`);
+      }
 
       try {
         // Initialize the StackManager with the Spacelift URL and bearer token
