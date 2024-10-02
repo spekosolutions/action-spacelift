@@ -28,10 +28,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.run = void 0;
 const core = __importStar(require("@actions/core"));
-const contextManager_1 = __importDefault(require("./graphql/contexts/contextManager"));
 const spaceManager_1 = __importDefault(require("./graphql/spaces/spaceManager"));
 const stackManager_1 = __importDefault(require("./graphql/stacks/stackManager"));
-const stackManager_2 = __importDefault(require("./spacectl/stacks/stackManager"));
 // Helper to generate a unique tag for the stack
 const generateUniqueTag = () => {
     return Math.random().toString(36).substring(7);
@@ -58,16 +56,15 @@ const run = async (inputs) => {
                 console.error('Error creating service space:', error);
                 throw error;
             }
-            try {
-                // Initialize the ContextManager with required values
-                const contextManager = new contextManager_1.default();
-                // Call createOrUpdateContext without passing yamlFilePath or contextName
-                const result = await contextManager.createOrUpdateContext(spaceId, inputs);
-                console.log('Context result:', result);
-            }
-            catch (error) {
-                console.error(`Failed to manage context: ${error.message}`);
-            }
+            // try {
+            //   // Initialize the ContextManager with required values
+            //   const contextManager = new ContextManager();
+            //   // Call createOrUpdateContext without passing yamlFilePath or contextName
+            //   const result = await contextManager.createOrUpdateContext(spaceId, inputs);
+            //   console.log('Context result:', result);
+            // } catch (error) {
+            //   console.error(`Failed to manage context: ${(error as Error).message}`);
+            // }
             try {
                 // Initialize the StackManager with the Spacelift URL and bearer token
                 const graphqlStackManager = new stackManager_1.default();
@@ -79,16 +76,15 @@ const run = async (inputs) => {
                 console.error(`Failed to upsert stack: ${error.message}`);
             }
         }
-        // Run command on stack
-        try {
-            const spacectlStackManager = new stackManager_2.default();
-            await spacectlStackManager.runCommand(stackName, command);
-            await spacectlStackManager.getStackOutputs(stackName);
-        }
-        catch (error) {
-            core.setFailed(`An error occurred: ${error.message}`);
-            console.error(error);
-        }
+        // // Run command on stack
+        // try {
+        //   const spacectlStackManager = new SpacectlStackManager();
+        //   await spacectlStackManager.runCommand(stackName, command);
+        //   await spacectlStackManager.getStackOutputs(stackName);
+        // } catch (error) {
+        //     core.setFailed(`An error occurred: ${(error as Error).message}`);
+        //     console.error(error);
+        // }
     }
     catch (error) {
         core.setFailed(`Action failed with error: ${error.message || error}`);

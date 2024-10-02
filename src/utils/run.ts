@@ -46,16 +46,16 @@ export const run = async (inputs: Inputs): Promise<void> => {
         throw error
       }
 
-      try {
-        // Initialize the ContextManager with required values
-        const contextManager = new ContextManager();
+      // try {
+      //   // Initialize the ContextManager with required values
+      //   const contextManager = new ContextManager();
         
-        // Call createOrUpdateContext without passing yamlFilePath or contextName
-        const result = await contextManager.createOrUpdateContext(spaceId, inputs);
-        console.log('Context result:', result);
-      } catch (error) {
-        console.error(`Failed to manage context: ${(error as Error).message}`);
-      }
+      //   // Call createOrUpdateContext without passing yamlFilePath or contextName
+      //   const result = await contextManager.createOrUpdateContext(spaceId, inputs);
+      //   console.log('Context result:', result);
+      // } catch (error) {
+      //   console.error(`Failed to manage context: ${(error as Error).message}`);
+      // }
 
       try {
         // Initialize the StackManager with the Spacelift URL and bearer token
@@ -70,15 +70,15 @@ export const run = async (inputs: Inputs): Promise<void> => {
       }
     }
 
-    // Run command on stack
-    try {
-      const spacectlStackManager = new SpacectlStackManager();
-      await spacectlStackManager.runCommand(stackName, command);
-      await spacectlStackManager.getStackOutputs(stackName);
-    } catch (error) {
-        core.setFailed(`An error occurred: ${(error as Error).message}`);
-        console.error(error);
-    }
+    // // Run command on stack
+    // try {
+    //   const spacectlStackManager = new SpacectlStackManager();
+    //   await spacectlStackManager.runCommand(stackName, command);
+    //   await spacectlStackManager.getStackOutputs(stackName);
+    // } catch (error) {
+    //     core.setFailed(`An error occurred: ${(error as Error).message}`);
+    //     console.error(error);
+    // }
     
   } catch (error) {
     core.setFailed(`Action failed with error: ${(error as Error).message || error}`)
