@@ -19,8 +19,8 @@ const generateUniqueTag = (): string => {
   return Math.random().toString(36).substring(7)
 }
 
-// Helper to add a delay (5 seconds here, but you can adjust)
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+ // Initialize the StackManager with the Spacelift URL and bearer token
+const graphqlStackManager = new GraphQLStackManager();
 
 export const run = async (inputs: Inputs): Promise<void> => {
   try {
@@ -61,9 +61,6 @@ export const run = async (inputs: Inputs): Promise<void> => {
       }
 
       try {
-        // Initialize the StackManager with the Spacelift URL and bearer token
-        const graphqlStackManager = new GraphQLStackManager();
-    
         // Call the upsertStack method to create or update the stack
         await graphqlStackManager.upsertStack(stackName, spaceId, integration_name, inputs);
     
@@ -71,14 +68,13 @@ export const run = async (inputs: Inputs): Promise<void> => {
       } catch (error) {
         core.error(`Failed to upsert stack: ${(error as Error).message}`);
       }
-
-      // Introduce a delay to allow the stack to be fully ready before running commands
-      core.info('Waiting 30 seconds to ensure stack is ready...');
-      await delay(30000);
     }
 
     // Run command on stack
     try {
+      graphqlStackManager.waitForStackRunsToFinish(stackName);
+      graphqlStackManager.waitForStackToBeReady(stackName);
+      
       const spacectlStackManager = new SpacectlStackManager();
       core.info(`Running command: ${command} on stack: ${stackName}`);
 

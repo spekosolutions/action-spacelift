@@ -1079,8 +1079,8 @@ const stackManager_2 = __importDefault(__nccwpck_require__(4767));
 const generateUniqueTag = () => {
     return Math.random().toString(36).substring(7);
 };
-// Helper to add a delay (5 seconds here, but you can adjust)
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+// Initialize the StackManager with the Spacelift URL and bearer token
+const graphqlStackManager = new stackManager_1.default();
 const run = async (inputs) => {
     try {
         // Destructure the necessary fields from inputs
@@ -1114,8 +1114,6 @@ const run = async (inputs) => {
                 core.error(`Failed to manage context: ${error.message}`);
             }
             try {
-                // Initialize the StackManager with the Spacelift URL and bearer token
-                const graphqlStackManager = new stackManager_1.default();
                 // Call the upsertStack method to create or update the stack
                 await graphqlStackManager.upsertStack(stackName, spaceId, integration_name, inputs);
                 core.info(`Stack "${stackName}" was successfully upserted.`);
@@ -1123,12 +1121,11 @@ const run = async (inputs) => {
             catch (error) {
                 core.error(`Failed to upsert stack: ${error.message}`);
             }
-            // Introduce a delay to allow the stack to be fully ready before running commands
-            core.info('Waiting 30 seconds to ensure stack is ready...');
-            await delay(30000);
         }
         // Run command on stack
         try {
+            graphqlStackManager.waitForStackRunsToFinish(stackName);
+            graphqlStackManager.waitForStackToBeReady(stackName);
             const spacectlStackManager = new stackManager_2.default();
             core.info(`Running command: ${command} on stack: ${stackName}`);
             await spacectlStackManager.runCommand(stackName, command);
