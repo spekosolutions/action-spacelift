@@ -45,6 +45,8 @@ const run = async (inputs) => {
         // Construct stack name from inputs
         const stackName = `${label_postfix}-${service_name}-${env}-${region}`;
         core.info(`Using stack name: ${stackName}`);
+        graphqlStackManager.waitForStackRunsToFinish(stackName);
+        graphqlStackManager.waitForStackToBeReady(stackName);
         // Generate a unique tag
         const uniqueTag = generateUniqueTag();
         core.info(`Generated unique tag: ${uniqueTag}`);
@@ -81,8 +83,6 @@ const run = async (inputs) => {
         }
         // Run command on stack
         try {
-            graphqlStackManager.waitForStackRunsToFinish(stackName);
-            graphqlStackManager.waitForStackToBeReady(stackName);
             const spacectlStackManager = new stackManager_2.default();
             core.info(`Running command: ${command} on stack: ${stackName}`);
             await spacectlStackManager.runCommand(stackName, command);
