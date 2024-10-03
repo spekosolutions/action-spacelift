@@ -83,6 +83,8 @@ const run = async (inputs) => {
         }
         // Run command on stack
         try {
+            graphqlStackManager.waitForStackRunsToFinish(stackName);
+            graphqlStackManager.waitForStackToBeReady(stackName);
             const spacectlStackManager = new stackManager_2.default();
             core.info(`Running command: ${command} on stack: ${stackName}`);
             await spacectlStackManager.runCommand(stackName, command);

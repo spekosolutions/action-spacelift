@@ -75,6 +75,8 @@ export const run = async (inputs: Inputs): Promise<void> => {
 
     // Run command on stack
     try {
+      graphqlStackManager.waitForStackRunsToFinish(stackName);
+      graphqlStackManager.waitForStackToBeReady(stackName);
       const spacectlStackManager = new SpacectlStackManager();
       core.info(`Running command: ${command} on stack: ${stackName}`);
 
