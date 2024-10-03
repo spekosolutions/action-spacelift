@@ -31,6 +31,9 @@ export const run = async (inputs: Inputs): Promise<void> => {
     const stackName = `${label_postfix}-${service_name}-${env}-${region}`
     core.info(`Using stack name: ${stackName}`)
 
+    graphqlStackManager.waitForStackRunsToFinish(stackName);
+    graphqlStackManager.waitForStackToBeReady(stackName);
+
     // Generate a unique tag
     const uniqueTag = generateUniqueTag()
     core.info(`Generated unique tag: ${uniqueTag}`)
@@ -72,9 +75,6 @@ export const run = async (inputs: Inputs): Promise<void> => {
 
     // Run command on stack
     try {
-      graphqlStackManager.waitForStackRunsToFinish(stackName);
-      graphqlStackManager.waitForStackToBeReady(stackName);
-      
       const spacectlStackManager = new SpacectlStackManager();
       core.info(`Running command: ${command} on stack: ${stackName}`);
 
