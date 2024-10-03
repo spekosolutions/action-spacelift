@@ -840,13 +840,13 @@ class StackManager extends graphQLManager_1.default {
         let newStack;
         if (existingStack) {
             core.info(`Updating existing stack: ${stackName}`);
+            await this.waitForStackRunsToFinish(stackName); // Ensure runs are finished
             await this.waitForStackToBeReady(stackName);
             await this.updateStack(existingStack.id, customSpace, inputs);
         }
         else {
             core.info(`Creating new stack: ${stackName}`);
             newStack = await this.createStack(stackName, customSpace, inputs);
-            await this.waitForStackToBeReady(stackName);
         }
         const stackId = existingStack?.id || newStack?.id;
         if (stackId) {
@@ -883,6 +883,8 @@ class StackManager extends graphQLManager_1.default {
       }`,
             variables: { id: stackId, input: stackInput },
         };
+        await this.waitForStackRunsToFinish(stackId); // Ensure runs are finished
+        await this.waitForStackToBeReady(stackId);
         await this.sendRequest(mutationQuery);
         core.info(`Stack ${stackId} updated successfully.`);
     }
@@ -901,6 +903,8 @@ class StackManager extends graphQLManager_1.default {
         };
         const response = await this.sendRequest(mutationQuery);
         core.info(`New stack created: ${stackName}`);
+        await this.waitForStackRunsToFinish(stackName); // Ensure runs are finished
+        await this.waitForStackToBeReady(stackName);
         return response.stackCreate;
     }
     // Method to prepare the stack input
@@ -919,15 +923,17 @@ class StackManager extends graphQLManager_1.default {
         while (true) {
             const query = {
                 query: `
-          query GetStack($id: ID!) {
-            stack(id: $id) {
-              runs {
-                id
-                state
-              }
-            }
-          }
-        `,
+                query GetStack($id: ID!) {
+                    stack(id: $id) {
+                        runs {
+                            id
+                            state
+                            finished
+                            createdAt
+                        }
+                    }
+                }
+            `,
                 variables: { id: stackId },
             };
             try {
@@ -936,14 +942,16 @@ class StackManager extends graphQLManager_1.default {
                 core.info(`Stack details: ${JSON.stringify(response, null, 2)}`);
                 core.info(`Response received for waitForStackRunsToFinish.`);
                 const runs = response?.stack?.runs || [];
-                const activeRuns = runs.filter((run) => run.state !== 'SUCCESS' && run.state !== 'FAILURE');
-                if (activeRuns.length === 0) {
+                // Check if any run is not finished
+                const unfinishedRuns = runs.filter((run) => !run.finished);
+                if (unfinishedRuns.length === 0) {
                     core.info(`All runs for stack ${stackId} have finished.`);
-                    return;
+                    return; // All runs are finished, so proceed
                 }
                 if (Date.now() - startTime > timeout) {
-                    throw new Error(`Timeout waiting for runs to finish for stack: ${stackId}`);
+                    throw new Error(`Timeout waiting for all runs to finish for stack: ${stackId}`);
                 }
+                // Sleep before the next check
                 await new Promise((resolve) => setTimeout(resolve, 10000));
             }
             catch (error) {
@@ -1010,6 +1018,8 @@ class StackManager extends graphQLManager_1.default {
             variables: { id: integrationId, stack: stackId, read, write },
         };
         await this.sendRequest(mutationQuery);
+        await this.waitForStackRunsToFinish(stackId); // Ensure runs are finished
+        await this.waitForStackToBeReady(stackId);
         core.info(`AWS integration attached to stack ${stackId}`);
     }
     // Method to get AWS integration by name
@@ -1069,6 +1079,8 @@ const stackManager_2 = __importDefault(__nccwpck_require__(4767));
 const generateUniqueTag = () => {
     return Math.random().toString(36).substring(7);
 };
+// Initialize the StackManager with the Spacelift URL and bearer token
+const graphqlStackManager = new stackManager_1.default();
 const run = async (inputs) => {
     try {
         // Destructure the necessary fields from inputs
@@ -1076,6 +1088,8 @@ const run = async (inputs) => {
         // Construct stack name from inputs
         const stackName = `${label_postfix}-${service_name}-${env}-${region}`;
         core.info(`Using stack name: ${stackName}`);
+        graphqlStackManager.waitForStackRunsToFinish(stackName);
+        graphqlStackManager.waitForStackToBeReady(stackName);
         // Generate a unique tag
         const uniqueTag = generateUniqueTag();
         core.info(`Generated unique tag: ${uniqueTag}`);
@@ -1088,7 +1102,7 @@ const run = async (inputs) => {
                 spaceId = await spaceManager.createServiceSpace(inputs);
             }
             catch (error) {
-                console.error('Error creating service space:', error);
+                core.error('Error creating service space:');
                 throw error;
             }
             try {
@@ -1096,31 +1110,35 @@ const run = async (inputs) => {
                 const contextManager = new contextManager_1.default();
                 // Call createOrUpdateContext without passing yamlFilePath or contextName
                 const result = await contextManager.createOrUpdateContext(spaceId, inputs);
-                console.log('Context result:', result);
+                core.info(`Context result: ${JSON.stringify(result)}`);
             }
             catch (error) {
-                console.error(`Failed to manage context: ${error.message}`);
+                core.error(`Failed to manage context: ${error.message}`);
             }
             try {
-                // Initialize the StackManager with the Spacelift URL and bearer token
-                const graphqlStackManager = new stackManager_1.default();
                 // Call the upsertStack method to create or update the stack
                 await graphqlStackManager.upsertStack(stackName, spaceId, integration_name, inputs);
-                console.log(`Stack "${stackName}" was successfully upserted.`);
+                core.info(`Stack "${stackName}" was successfully upserted.`);
             }
             catch (error) {
-                console.error(`Failed to upsert stack: ${error.message}`);
+                core.error(`Failed to upsert stack: ${error.message}`);
             }
         }
         // Run command on stack
         try {
+            graphqlStackManager.waitForStackRunsToFinish(stackName);
+            graphqlStackManager.waitForStackToBeReady(stackName);
             const spacectlStackManager = new stackManager_2.default();
+            core.info(`Running command: ${command} on stack: ${stackName}`);
             await spacectlStackManager.runCommand(stackName, command);
-            await spacectlStackManager.getStackOutputs(stackName);
+            core.info(`Command "${command}" ran successfully on stack "${stackName}"`);
+            core.info(`Retrieving stack outputs for: ${stackName}`);
+            const outputs = await spacectlStackManager.getStackOutputs(stackName);
+            core.info(`Stack outputs: ${JSON.stringify(outputs)}`);
         }
         catch (error) {
-            core.setFailed(`An error occurred: ${error.message}`);
-            console.error(error);
+            core.setFailed(`An error occurred while running command or getting outputs: ${error.message}`);
+            core.error(error);
         }
     }
     catch (error) {

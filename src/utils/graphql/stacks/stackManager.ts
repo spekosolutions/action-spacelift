@@ -18,12 +18,12 @@ class StackManager extends GraphQLManager {
 
     if (existingStack) {
       core.info(`Updating existing stack: ${stackName}`)
+      await this.waitForStackRunsToFinish(stackName) // Ensure runs are finished
       await this.waitForStackToBeReady(stackName)
       await this.updateStack(existingStack.id, customSpace, inputs)
     } else {
       core.info(`Creating new stack: ${stackName}`)
       newStack = await this.createStack(stackName, customSpace, inputs)
-      await this.waitForStackToBeReady(stackName)
     }
 
     const stackId = existingStack?.id || newStack?.id
@@ -66,6 +66,9 @@ class StackManager extends GraphQLManager {
       variables: { id: stackId, input: stackInput },
     }
 
+    await this.waitForStackRunsToFinish(stackId) // Ensure runs are finished
+    await this.waitForStackToBeReady(stackId)
+
     await this.sendRequest(mutationQuery)
     core.info(`Stack ${stackId} updated successfully.`)
   }
@@ -87,6 +90,8 @@ class StackManager extends GraphQLManager {
 
     const response = await this.sendRequest(mutationQuery)
     core.info(`New stack created: ${stackName}`)
+    await this.waitForStackRunsToFinish(stackName) // Ensure runs are finished
+    await this.waitForStackToBeReady(stackName)
     return response.stackCreate
   }
 
@@ -107,15 +112,17 @@ class StackManager extends GraphQLManager {
     while (true) {
       const query = {
         query: `
-          query GetStack($id: ID!) {
-            stack(id: $id) {
-              runs {
-                id
-                state
-              }
-            }
-          }
-        `,
+                query GetStack($id: ID!) {
+                    stack(id: $id) {
+                        runs {
+                            id
+                            state
+                            finished
+                            createdAt
+                        }
+                    }
+                }
+            `,
         variables: { id: stackId },
       }
 
@@ -123,21 +130,24 @@ class StackManager extends GraphQLManager {
         core.info(`Sending request for waitForStackRunsToFinish.`)
 
         const response = await this.sendRequest(query)
-        core.info(`Stack details: ${JSON.stringify(response, null, 2)}`);
+        core.info(`Stack details: ${JSON.stringify(response, null, 2)}`)
         core.info(`Response received for waitForStackRunsToFinish.`)
 
         const runs = response?.stack?.runs || []
-        const activeRuns = runs.filter((run: any) => run.state !== 'SUCCESS' && run.state !== 'FAILURE')
 
-        if (activeRuns.length === 0) {
+        // Check if any run is not finished
+        const unfinishedRuns = runs.filter((run: any) => !run.finished)
+
+        if (unfinishedRuns.length === 0) {
           core.info(`All runs for stack ${stackId} have finished.`)
-          return
+          return // All runs are finished, so proceed
         }
 
         if (Date.now() - startTime > timeout) {
-          throw new Error(`Timeout waiting for runs to finish for stack: ${stackId}`)
+          throw new Error(`Timeout waiting for all runs to finish for stack: ${stackId}`)
         }
 
+        // Sleep before the next check
         await new Promise((resolve) => setTimeout(resolve, 10000))
       } catch (error) {
         console.error(`Error while checking stack runs: ${(error as any).message}`)
@@ -155,7 +165,7 @@ class StackManager extends GraphQLManager {
         throw new Error(`No stack found with the name: ${stackName}`)
       }
 
-      core.info(`Stack details: ${JSON.stringify(stackDetails, null, 2)}`);
+      core.info(`Stack details: ${JSON.stringify(stackDetails, null, 2)}`)
 
       if (stackDetails.createdAt) {
         isReady = true
@@ -213,7 +223,11 @@ class StackManager extends GraphQLManager {
       variables: { id: integrationId, stack: stackId, read, write },
     }
 
+    
     await this.sendRequest(mutationQuery)
+    await this.waitForStackRunsToFinish(stackId) // Ensure runs are finished
+    await this.waitForStackToBeReady(stackId)
+
     core.info(`AWS integration attached to stack ${stackId}`)
   }
 
