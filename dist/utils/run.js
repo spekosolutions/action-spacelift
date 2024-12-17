@@ -45,13 +45,18 @@ const run = async (inputs) => {
         // Construct stack name from inputs
         const stackName = `${label_postfix}-${service_name}-${env}-${region}`;
         core.info(`Using stack name: ${stackName}`);
-        graphqlStackManager.waitForStackRunsToFinish(stackName);
-        graphqlStackManager.waitForStackToBeReady(stackName);
         // Generate a unique tag
         const uniqueTag = generateUniqueTag();
         core.info(`Generated unique tag: ${uniqueTag}`);
         // Check if stack exists
         const existingStack = await graphqlStackManager.getStackByName(stackName);
+        if (existingStack) {
+            graphqlStackManager.waitForStackRunsToFinish(stackName);
+            graphqlStackManager.waitForStackToBeReady(stackName);
+        }
+        else {
+            core.info(`Stack "${stackName}" does not exist. Proceeding to create a new stack.`);
+        }
         if (!existingStack || command.includes('deploy')) {
             // Declare the spaceId variable to be used later
             let spaceId;
