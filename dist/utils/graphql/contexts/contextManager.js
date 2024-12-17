@@ -217,7 +217,7 @@ class ContextManager extends graphQLManager_1.default {
             const hasChanges = this.detectChanges(existingContext, contextValues);
             if (hasChanges) {
                 core.info(`Changes detected in context, updating...`);
-                await this.sendContextMutation(existingContext.id, contextValues, true); // Update existing context
+                await this.sendContextMutation(existingContext.id, autoAttachLabel, contextValues, true); // Update existing context
             }
             else {
                 core.info(`No changes detected, skipping update.`);

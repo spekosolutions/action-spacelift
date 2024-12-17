@@ -224,7 +224,7 @@ class ContextManager extends GraphQLManager {
 
       if (hasChanges) {
         core.info(`Changes detected in context, updating...`)
-        await this.sendContextMutation(existingContext.id, contextValues, true) // Update existing context
+        await this.sendContextMutation(existingContext.id, autoAttachLabel, contextValues, true) // Update existing context
       } else {
         core.info(`No changes detected, skipping update.`)
       }
