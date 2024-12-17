@@ -161,13 +161,27 @@ class ContextManager extends GraphQLManager {
       ...(Array.isArray(inputs.labels) ? inputs.labels.map((label: string) => label) : []),
       autoAttachLabel,
     ];
-  
+    
+    const hooks = {
+      beforeInit: inputs.hooks?.beforeInit || [],
+      afterInit: inputs.hooks?.afterInit || [],
+      beforePlan: inputs.hooks?.beforePlan || [],
+      afterPlan: inputs.hooks?.afterPlan || [],
+      beforeApply: inputs.hooks?.beforeApply || [],
+      afterApply: inputs.hooks?.afterApply || [],
+      beforeDestroy: inputs.hooks?.beforeDestroy || [],
+      afterDestroy: inputs.hooks?.afterDestroy || [],
+      beforePerform: inputs.hooks?.beforePerform || [],
+      afterPerform: inputs.hooks?.afterPerform || [],
+      afterRun: inputs.hooks?.afterRun || [],
+    };
+    
     const variables: any = {
       input: {
-        name: inputs.name,
+        name: inputs.name, // Required
         description: inputs.description || '',
         space: inputs.space || null,
-        labels: [autoAttachLabel],
+        labels: labels,
         configAttachments: Array.isArray(inputs.configAttachments)
           ? inputs.configAttachments.map((config: any) => ({
               id: config.id,
@@ -178,7 +192,7 @@ class ContextManager extends GraphQLManager {
               fileMode: config.fileMode || '0644',
             }))
           : [],
-        hooks: inputs.hooks || {},
+        hooks: hooks, // Pass sanitized hooks
         stackAttachments: inputs.stackAttachments || [],
       },
     };
