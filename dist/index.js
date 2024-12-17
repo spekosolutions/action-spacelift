@@ -437,7 +437,7 @@ class ContextManager extends graphQLManager_1.default {
                 name: inputs.name, // Required
                 description: inputs.description || '', // Optional
                 space: inputs.space || null, // Optional
-                labels: inputs.labels || [], // Required
+                labels: [autoAttachLabel], // Required
                 configAttachments: inputs.configAttachments.map((config) => ({
                     id: config.id, // Must be provided
                     type: config.type || 'ENVIRONMENT_VARIABLE', // Default to 'ENVIRONMENT_VARIABLE'
@@ -481,10 +481,11 @@ class ContextManager extends graphQLManager_1.default {
         const existingContext = await this.getContextById(contextID);
         // Auto attach label
         const autoAttachLabel = `autoattach:${stackName}`;
+        core.info(`Auto Label to Attach to Context: ${autoAttachLabel}`);
         if (existingContext) {
             core.info(`Context with ID ${existingContext.id} already exists...`);
             // Add autoattach label to existing stack
-            existingContext.labels = [...existingContext.labels, autoAttachLabel];
+            existingContext.labels = autoAttachLabel;
             // Detect changes in config, labels, and hooks
             const hasChanges = this.detectChanges(existingContext, contextValues);
             if (hasChanges) {
