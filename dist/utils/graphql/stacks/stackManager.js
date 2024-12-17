@@ -77,12 +77,12 @@ class StackManager extends graphQLManager_1.default {
         const stackInput = await this.prepareStackInput(stackId, customSpace, inputs);
         core.info(`Prepared stack input: ${JSON.stringify(stackInput)}`);
         const mutationQuery = {
-            query: `mutation UpdateStack($id: ID!, $input: StackInput!) {
-        stackUpdate(id: $id, input: $input) {
+            query: `mutation UpdateStack($id: ID!, $input: StackInput!, $manageState: Boolean!) {
+        stackUpdate(id: $id, input: $input, manageState: $manageState) {
           id
         }
       }`,
-            variables: { id: stackId, input: stackInput },
+            variables: { id: stackId, manageState: true, input: stackInput },
         };
         await this.waitForStackRunsToFinish(stackId); // Ensure runs are finished
         await this.waitForStackToBeReady(stackId);
@@ -93,8 +93,8 @@ class StackManager extends graphQLManager_1.default {
     async createStack(stackName, customSpace, inputs) {
         const stackInput = await this.prepareStackInput(stackName, customSpace, inputs);
         const mutationQuery = {
-            query: `mutation CreateStack($input: StackInput!) {
-        stackCreate(input: $input) {
+            query: `mutation CreateStack($input: StackInput!, $manageState: Boolean!) {
+        stackCreate(input: $input, manageState: $manageState) {
           id
         }
       }`,
