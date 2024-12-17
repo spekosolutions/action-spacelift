@@ -162,7 +162,7 @@ class ContextManager extends GraphQLManager {
         name: inputs.name, // Required
         description: inputs.description || '', // Optional
         space: inputs.space || null, // Optional
-        labels: inputs.labels || [autoAttachLabel], // Required
+        labels: inputs.labels ? [...inputs.labels, autoAttachLabel] : [autoAttachLabel], // Required
         configAttachments:
           inputs.configAttachments.map((config: any) => ({
             id: config.id, // Must be provided
