@@ -157,12 +157,17 @@ class ContextManager extends GraphQLManager {
       }
     `
 
+    const labels = [
+      ...(Array.isArray(inputs.labels) ? inputs.labels.map((label: string) => label) : []),
+      autoAttachLabel
+    ];
+
     const variables: any = {
       input: {
         name: inputs.name, // Required
         description: inputs.description || '', // Optional
         space: inputs.space || null, // Optional
-        labels: inputs.labels ? [...inputs.labels, autoAttachLabel] : [autoAttachLabel], // Required
+        labels: labels, // Required
         configAttachments:
           inputs.configAttachments.map((config: any) => ({
             id: config.id, // Must be provided
