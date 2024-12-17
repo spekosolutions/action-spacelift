@@ -898,6 +898,7 @@ class StackManager extends graphQLManager_1.default {
         }
       }`,
             variables: {
+                manageState: true,
                 input: { ...stackInput },
             },
         };
