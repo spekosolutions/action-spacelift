@@ -157,27 +157,21 @@ class ContextManager extends GraphQLManager {
       }
     `
 
-    const labels = [
-      ...(Array.isArray(inputs.labels) ? inputs.labels.map((label: string) => label) : []),
-      autoAttachLabel,
-    ];
-
     const variables: any = {
       input: {
-        name: inputs.name,
-        description: inputs.description || '',
-        space: inputs.space || null,
-        labels: labels,
-        configAttachments: Array.isArray(inputs.configAttachments)
-          ? inputs.configAttachments.map((config: any) => ({
-              id: config.id,
-              type: config.type || 'ENVIRONMENT_VARIABLE',
-              value: Array.isArray(config.value) ? JSON.stringify(config.value) : config.value || '',
-              writeOnly: config.writeOnly !== undefined ? config.writeOnly : true,
-              description: config.description || '',
-              fileMode: config.fileMode || '0644',
-            }))
-          : [],
+        name: inputs.name, // Required
+        description: inputs.description || '', // Optional
+        space: inputs.space || null, // Optional
+        labels: [autoAttachLabel], // Required
+        configAttachments:
+          inputs.configAttachments.map((config: any) => ({
+            id: config.id, // Must be provided
+            type: config.type || 'ENVIRONMENT_VARIABLE', // Default to 'ENVIRONMENT_VARIABLE'
+            value: Array.isArray(config.value) ? JSON.stringify(config.value) : config.value || '', // Stringify arrays
+            writeOnly: config.writeOnly !== undefined ? config.writeOnly : true, // Default to 'true'
+            description: config.description || '', // Optional
+            fileMode: config.fileMode || '0644', // Optional, provide a default if needed
+        })) || [], // Required
         hooks: {
           beforeInit: inputs.hooks?.beforeInit || [],
           afterInit: inputs.hooks?.afterInit || [],
@@ -191,9 +185,9 @@ class ContextManager extends GraphQLManager {
           afterPerform: inputs.hooks?.afterPerform || [],
           afterRun: inputs.hooks?.afterRun || [],
         },
-        stackAttachments: inputs.stackAttachments || [],
+        stackAttachments: inputs.stackAttachments || [], // Optional
       },
-    };
+    }
 
     // If updating, add ID and replaceConfigElements
     if (contextId) {
