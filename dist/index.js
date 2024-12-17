@@ -1093,7 +1093,9 @@ const run = async (inputs) => {
         // Generate a unique tag
         const uniqueTag = generateUniqueTag();
         core.info(`Generated unique tag: ${uniqueTag}`);
-        if (command.includes('deploy')) {
+        // Check if stack exists
+        const existingStack = await graphqlStackManager.getStackByName(stackName);
+        if (!existingStack || command.includes('deploy')) {
             // Declare the spaceId variable to be used later
             let spaceId;
             // Create service space and upsert the stack
