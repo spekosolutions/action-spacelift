@@ -1106,7 +1106,7 @@ const run = async (inputs) => {
         else {
             core.info(`Stack "${stackName}" does not exist. Proceeding to create a new stack.`);
         }
-        if (!existingStack || command.includes('deploy')) {
+        if (!existingStack || command.includes('deploy') || command.includes('preview')) {
             // Declare the spaceId variable to be used later
             let spaceId;
             // Create service space and upsert the stack

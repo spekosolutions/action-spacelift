@@ -45,7 +45,7 @@ export const run = async (inputs: Inputs): Promise<void> => {
       core.info(`Stack "${stackName}" does not exist. Proceeding to create a new stack.`);
     }
 
-    if (!existingStack || command.includes('deploy')) {
+    if (!existingStack || command.includes('deploy') || command.includes('preview')) {
       // Declare the spaceId variable to be used later
       let spaceId: string
 
