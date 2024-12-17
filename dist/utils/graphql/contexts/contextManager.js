@@ -149,7 +149,7 @@ class ContextManager extends graphQLManager_1.default {
         return configChanges || labelChanges || hookChanges;
     }
     // Method to send mutation, either for update or create
-    async sendContextMutation(contextId, inputs, replaceConfigElements = false) {
+    async sendContextMutation(contextId, autoAttachLabel, inputs, replaceConfigElements = false) {
         const mutationType = contextId ? 'contextUpdateV2' : 'contextCreateV2';
         const mutationQuery = `
       mutation ${mutationType}($input: ContextInput!${contextId ? ', $id: ID!' : ''}${contextId ? ', $replaceConfigElements: Boolean' : ''}) {
@@ -165,7 +165,7 @@ class ContextManager extends graphQLManager_1.default {
                 name: inputs.name, // Required
                 description: inputs.description || '', // Optional
                 space: inputs.space || null, // Optional
-                labels: inputs.labels || [], // Required
+                labels: inputs.labels || [autoAttachLabel], // Required
                 configAttachments: inputs.configAttachments.map((config) => ({
                     id: config.id, // Must be provided
                     type: config.type || 'ENVIRONMENT_VARIABLE', // Default to 'ENVIRONMENT_VARIABLE'
@@ -200,15 +200,19 @@ class ContextManager extends graphQLManager_1.default {
         core.info(`Context ${contextId ? 'updated' : 'created'} successfully.`);
     }
     // Main method to create or update the context based on changes
-    async createOrUpdateContext(spaceId, inputs) {
+    async createOrUpdateContext(spaceId, stackName, inputs) {
         const { label_prefix, env, region, service_name, label_postfix } = inputs;
         const contextName = `${label_prefix}:${env}:${region}:${service_name}:${label_postfix}`;
         // Transformed context name with hyphens for querying and creation
         const contextID = contextName.replace(/:/g, '-');
         const contextValues = this.loadEnvValuesFromYaml(spaceId, contextName);
         const existingContext = await this.getContextById(contextID);
+        // Auto attach label
+        const autoAttachLabel = `autoattach:${stackName}`;
         if (existingContext) {
             core.info(`Context with ID ${existingContext.id} already exists...`);
+            // Add autoattach label to existing stack
+            existingContext.labels = [...existingContext.labels, autoAttachLabel];
             // Detect changes in config, labels, and hooks
             const hasChanges = this.detectChanges(existingContext, contextValues);
             if (hasChanges) {
@@ -222,7 +226,7 @@ class ContextManager extends graphQLManager_1.default {
         }
         // Create new context
         core.info(`Context ${contextName} doesn't exist, creating...`);
-        await this.sendContextMutation(undefined, contextValues);
+        await this.sendContextMutation(undefined, autoAttachLabel, contextValues);
         core.info(`Context created successfully.`);
     }
 }

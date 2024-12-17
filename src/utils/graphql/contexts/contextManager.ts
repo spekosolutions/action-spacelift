@@ -142,6 +142,7 @@ class ContextManager extends GraphQLManager {
   // Method to send mutation, either for update or create
   private async sendContextMutation(
     contextId: string | undefined,
+    autoAttachLabel: string,
     inputs: any,
     replaceConfigElements: boolean = false,
   ): Promise<void> {
@@ -161,7 +162,7 @@ class ContextManager extends GraphQLManager {
         name: inputs.name, // Required
         description: inputs.description || '', // Optional
         space: inputs.space || null, // Optional
-        labels: inputs.labels || [], // Required
+        labels: inputs.labels || [autoAttachLabel], // Required
         configAttachments:
           inputs.configAttachments.map((config: any) => ({
             id: config.id, // Must be provided
@@ -201,7 +202,7 @@ class ContextManager extends GraphQLManager {
   }
 
   // Main method to create or update the context based on changes
-  async createOrUpdateContext(spaceId: string, inputs: any): Promise<any> {
+  async createOrUpdateContext(spaceId: string, stackName : string, inputs: any): Promise<any> {
     const { label_prefix, env, region, service_name, label_postfix } = inputs
     const contextName = `${label_prefix}:${env}:${region}:${service_name}:${label_postfix}`
     // Transformed context name with hyphens for querying and creation
@@ -209,8 +210,14 @@ class ContextManager extends GraphQLManager {
     const contextValues = this.loadEnvValuesFromYaml(spaceId, contextName)
     const existingContext = await this.getContextById(contextID)
 
+    // Auto attach label
+    const autoAttachLabel = `autoattach:${stackName}`
+
     if (existingContext) {
       core.info(`Context with ID ${existingContext.id} already exists...`)
+
+      // Add autoattach label to existing stack
+      existingContext.labels = [...existingContext.labels, autoAttachLabel];
 
       // Detect changes in config, labels, and hooks
       const hasChanges = this.detectChanges(existingContext, contextValues)
@@ -227,7 +234,7 @@ class ContextManager extends GraphQLManager {
 
     // Create new context
     core.info(`Context ${contextName} doesn't exist, creating...`)
-    await this.sendContextMutation(undefined, contextValues)
+    await this.sendContextMutation(undefined, autoAttachLabel, contextValues)
     core.info(`Context created successfully.`)
   }
 }

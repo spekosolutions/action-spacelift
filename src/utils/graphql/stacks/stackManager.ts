@@ -103,6 +103,7 @@ class StackManager extends GraphQLManager {
     jsonInput.name = stackName
     jsonInput.labels.push(`env:${inputs.env}`)
     jsonInput.labels.push(`region:${inputs.region}`)
+    jsonInput.labels.push(`unique_name:${stackName}`)
     jsonInput.space = customSpace
     return jsonInput
   }

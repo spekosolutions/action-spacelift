@@ -64,7 +64,7 @@ export const run = async (inputs: Inputs): Promise<void> => {
         const contextManager = new ContextManager();
         
         // Call createOrUpdateContext without passing yamlFilePath or contextName
-        const result = await contextManager.createOrUpdateContext(spaceId, inputs);
+        const result = await contextManager.createOrUpdateContext(spaceId, stackName, inputs);
         core.info(`Context result: ${JSON.stringify(result)}`);
       } catch (error) {
         core.error(`Failed to manage context: ${(error as Error).message}`);
