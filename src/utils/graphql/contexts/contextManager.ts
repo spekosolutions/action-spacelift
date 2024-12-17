@@ -144,9 +144,9 @@ class ContextManager extends GraphQLManager {
     contextId: string | undefined,
     autoAttachLabel: string,
     inputs: any,
-    replaceConfigElements: boolean = false,
-  ): Promise<void> {
-    const mutationType = contextId ? 'contextUpdateV2' : 'contextCreateV2'
+    replaceConfigElements: boolean = false
+  ): Promise<{ id: string; name: string; updatedAt: string } | void> {
+    const mutationType = contextId ? 'contextUpdateV2' : 'contextCreateV2';
     const mutationQuery = `
       mutation ${mutationType}($input: ContextInput!${contextId ? ', $id: ID!' : ''}${contextId ? ', $replaceConfigElements: Boolean' : ''}) {
         ${mutationType}(${contextId ? 'id: $id, ' : ''}input: $input${contextId ? ', replaceConfigElements: $replaceConfigElements' : ''}) {
@@ -155,90 +155,89 @@ class ContextManager extends GraphQLManager {
           updatedAt
         }
       }
-    `
-
+    `;
+  
+    const labels = [
+      ...(Array.isArray(inputs.labels) ? inputs.labels.map((label: string) => label) : []),
+      autoAttachLabel,
+    ];
+  
     const variables: any = {
       input: {
-        name: inputs.name, // Required
-        description: inputs.description || '', // Optional
-        space: inputs.space || null, // Optional
-        labels: [autoAttachLabel], // Required
-        configAttachments:
-          inputs.configAttachments.map((config: any) => ({
-            id: config.id, // Must be provided
-            type: config.type || 'ENVIRONMENT_VARIABLE', // Default to 'ENVIRONMENT_VARIABLE'
-            value: Array.isArray(config.value) ? JSON.stringify(config.value) : config.value || '', // Stringify arrays
-            writeOnly: config.writeOnly !== undefined ? config.writeOnly : true, // Default to 'true'
-            description: config.description || '', // Optional
-            fileMode: config.fileMode || '0644', // Optional, provide a default if needed
-        })) || [], // Required
-        hooks: {
-          beforeInit: inputs.hooks?.beforeInit || [],
-          afterInit: inputs.hooks?.afterInit || [],
-          beforePlan: inputs.hooks?.beforePlan || [],
-          afterPlan: inputs.hooks?.afterPlan || [],
-          beforeApply: inputs.hooks?.beforeApply || [],
-          afterApply: inputs.hooks?.afterApply || [],
-          beforeDestroy: inputs.hooks?.beforeDestroy || [],
-          afterDestroy: inputs.hooks?.afterDestroy || [],
-          beforePerform: inputs.hooks?.beforePerform || [],
-          afterPerform: inputs.hooks?.afterPerform || [],
-          afterRun: inputs.hooks?.afterRun || [],
-        },
-        stackAttachments: inputs.stackAttachments || [], // Optional
+        name: inputs.name,
+        description: inputs.description || '',
+        space: inputs.space || null,
+        labels: [autoAttachLabel],
+        configAttachments: Array.isArray(inputs.configAttachments)
+          ? inputs.configAttachments.map((config: any) => ({
+              id: config.id,
+              type: config.type || 'ENVIRONMENT_VARIABLE',
+              value: Array.isArray(config.value) ? JSON.stringify(config.value) : config.value || '',
+              writeOnly: config.writeOnly !== undefined ? config.writeOnly : true,
+              description: config.description || '',
+              fileMode: config.fileMode || '0644',
+            }))
+          : [],
+        hooks: inputs.hooks || {},
+        stackAttachments: inputs.stackAttachments || [],
       },
-    }
-
-    // If updating, add ID and replaceConfigElements
+    };
+  
     if (contextId) {
-      variables.id = contextId
-      variables.replaceConfigElements = replaceConfigElements
+      variables.id = contextId;
+      variables.replaceConfigElements = replaceConfigElements;
     }
-
-    core.info(`Variables before mutation: ${JSON.stringify(variables)}`)
-
-    await this.sendRequest({ query: mutationQuery, variables })
+  
+    core.info(`Variables before mutation: ${JSON.stringify(variables)}`);
+    const response = await this.sendRequest({ query: mutationQuery, variables });
     core.info(`Context ${contextId ? 'updated' : 'created'} successfully.`)
+    
+    return response?.[mutationType]; // Return mutation response (id, name, updatedAt)
   }
-
+  
   // Main method to create or update the context based on changes
-  async createOrUpdateContext(spaceId: string, stackName : string, inputs: any): Promise<any> {
-    const { label_prefix, env, region, service_name, label_postfix } = inputs
-    const contextName = `${label_prefix}:${env}:${region}:${service_name}:${label_postfix}`
-    // Transformed context name with hyphens for querying and creation
-    const contextID = contextName.replace(/:/g, '-');
-    const contextValues = this.loadEnvValuesFromYaml(spaceId, contextName)
-    const existingContext = await this.getContextById(contextID)
+  async createOrUpdateContext(spaceId: string, inputs: any): Promise<any> {
+    const { label_prefix, env, region, service_name, label_postfix } = inputs;
+
+    // Generate context name and ID
+    const contextName = `${label_prefix}:${env}:${region}:${service_name}:${label_postfix}`;
+    const contextID = contextName.replace(/:/g, '-'); // Transformed context name with hyphens
+
+    const contextValues = this.loadEnvValuesFromYaml(spaceId, contextName);
+    const existingContext = await this.getContextById(contextID);
 
     // Auto attach label
-    const autoAttachLabel = `autoattach:${stackName}`
-
-    core.info(`Auto Label to Attach to Context: ${autoAttachLabel}`)
+    const autoAttachLabel = `autoattach:${contextName}`;
+    core.info(`Auto Label to Attach to Context: ${autoAttachLabel}`);
 
     if (existingContext) {
-      core.info(`Context with ID ${existingContext.id} already exists...`)
+      core.info(`Context with ID ${existingContext.id} already exists...`);
 
       // Add autoattach label to existing stack
-      existingContext.labels = autoAttachLabel;
+      existingContext.labels = [...existingContext.labels, autoAttachLabel];
 
       // Detect changes in config, labels, and hooks
-      const hasChanges = this.detectChanges(existingContext, contextValues)
+      const hasChanges = this.detectChanges(existingContext, contextValues);
 
       if (hasChanges) {
-        core.info(`Changes detected in context, updating...`)
-        await this.sendContextMutation(existingContext.id, autoAttachLabel, contextValues, true) // Update existing context
-      } else {
-        core.info(`No changes detected, skipping update.`)
-      }
+        core.info(`Changes detected in context, updating...`);
+        const response = await this.sendContextMutation(existingContext.id, autoAttachLabel, contextValues, true);
 
-      return existingContext // Return the existing context
+        return { ...(response || {}), contextName }; // Spread only if response is not void
+      } else {
+        core.info(`No changes detected, skipping update.`);
+        return { ...existingContext, contextName };
+      }
     }
 
     // Create new context
-    core.info(`Context ${contextName} doesn't exist, creating...`)
-    await this.sendContextMutation(undefined, autoAttachLabel, contextValues)
-    core.info(`Context created successfully.`)
+    core.info(`Context ${contextName} doesn't exist, creating...`);
+    const response = await this.sendContextMutation(undefined, autoAttachLabel, contextValues);
+    core.info(`Context created successfully.`);
+
+    return { ...(response || {}), contextName }; // Include contextName safely
   }
+
 }
 
 export default ContextManager

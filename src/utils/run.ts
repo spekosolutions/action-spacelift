@@ -45,7 +45,7 @@ export const run = async (inputs: Inputs): Promise<void> => {
       core.info(`Stack "${stackName}" does not exist. Proceeding to create a new stack.`);
     }
 
-    if (!existingStack || command.includes('deploy') || command.includes('preview')) {
+    if (!existingStack) {
       // Declare the spaceId variable to be used later
       let spaceId: string
 
@@ -62,22 +62,26 @@ export const run = async (inputs: Inputs): Promise<void> => {
       try {
         // Initialize the ContextManager with required values
         const contextManager = new ContextManager();
+      
+        // Call createOrUpdateContext
+        const contextResult = await contextManager.createOrUpdateContext(spaceId, inputs);
+        core.info(`Context result: ${JSON.stringify(contextResult)}`);
         
-        // Call createOrUpdateContext without passing yamlFilePath or contextName
-        const result = await contextManager.createOrUpdateContext(spaceId, stackName, inputs);
-        core.info(`Context result: ${JSON.stringify(result)}`);
+        // Access contextName directly
+        const contextName = contextResult.contextName;
+      
+        core.info(`Context name: ${contextName}`);
+        
+        try {
+          // Call the upsertStack method and pass contextName
+          await graphqlStackManager.upsertStack(stackName, contextName, spaceId, integration_name, inputs);
+          core.info(`Stack "${stackName}" was successfully upserted.`);
+        } catch (error) {
+          core.error(`Failed to upsert stack: ${(error as Error).message}`);
+        }
       } catch (error) {
         core.error(`Failed to manage context: ${(error as Error).message}`);
-      }
-
-      try {
-        // Call the upsertStack method to create or update the stack
-        await graphqlStackManager.upsertStack(stackName, spaceId, integration_name, inputs);
-    
-        core.info(`Stack "${stackName}" was successfully upserted.`);
-      } catch (error) {
-        core.error(`Failed to upsert stack: ${(error as Error).message}`);
-      }
+      }      
     }
 
     // Run command on stack

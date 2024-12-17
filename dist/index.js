@@ -432,75 +432,71 @@ class ContextManager extends graphQLManager_1.default {
         }
       }
     `;
+        const labels = [
+            ...(Array.isArray(inputs.labels) ? inputs.labels.map((label) => label) : []),
+            autoAttachLabel,
+        ];
         const variables = {
             input: {
-                name: inputs.name, // Required
-                description: inputs.description || '', // Optional
-                space: inputs.space || null, // Optional
-                labels: [autoAttachLabel], // Required
-                configAttachments: inputs.configAttachments.map((config) => ({
-                    id: config.id, // Must be provided
-                    type: config.type || 'ENVIRONMENT_VARIABLE', // Default to 'ENVIRONMENT_VARIABLE'
-                    value: Array.isArray(config.value) ? JSON.stringify(config.value) : config.value || '', // Stringify arrays
-                    writeOnly: config.writeOnly !== undefined ? config.writeOnly : true, // Default to 'true'
-                    description: config.description || '', // Optional
-                    fileMode: config.fileMode || '0644', // Optional, provide a default if needed
-                })) || [], // Required
-                hooks: {
-                    beforeInit: inputs.hooks?.beforeInit || [],
-                    afterInit: inputs.hooks?.afterInit || [],
-                    beforePlan: inputs.hooks?.beforePlan || [],
-                    afterPlan: inputs.hooks?.afterPlan || [],
-                    beforeApply: inputs.hooks?.beforeApply || [],
-                    afterApply: inputs.hooks?.afterApply || [],
-                    beforeDestroy: inputs.hooks?.beforeDestroy || [],
-                    afterDestroy: inputs.hooks?.afterDestroy || [],
-                    beforePerform: inputs.hooks?.beforePerform || [],
-                    afterPerform: inputs.hooks?.afterPerform || [],
-                    afterRun: inputs.hooks?.afterRun || [],
-                },
-                stackAttachments: inputs.stackAttachments || [], // Optional
+                name: inputs.name,
+                description: inputs.description || '',
+                space: inputs.space || null,
+                labels: [autoAttachLabel],
+                configAttachments: Array.isArray(inputs.configAttachments)
+                    ? inputs.configAttachments.map((config) => ({
+                        id: config.id,
+                        type: config.type || 'ENVIRONMENT_VARIABLE',
+                        value: Array.isArray(config.value) ? JSON.stringify(config.value) : config.value || '',
+                        writeOnly: config.writeOnly !== undefined ? config.writeOnly : true,
+                        description: config.description || '',
+                        fileMode: config.fileMode || '0644',
+                    }))
+                    : [],
+                hooks: inputs.hooks || {},
+                stackAttachments: inputs.stackAttachments || [],
             },
         };
-        // If updating, add ID and replaceConfigElements
         if (contextId) {
             variables.id = contextId;
             variables.replaceConfigElements = replaceConfigElements;
         }
         core.info(`Variables before mutation: ${JSON.stringify(variables)}`);
-        await this.sendRequest({ query: mutationQuery, variables });
+        const response = await this.sendRequest({ query: mutationQuery, variables });
         core.info(`Context ${contextId ? 'updated' : 'created'} successfully.`);
+        return response?.[mutationType]; // Return mutation response (id, name, updatedAt)
     }
     // Main method to create or update the context based on changes
-    async createOrUpdateContext(spaceId, stackName, inputs) {
+    async createOrUpdateContext(spaceId, inputs) {
         const { label_prefix, env, region, service_name, label_postfix } = inputs;
+        // Generate context name and ID
         const contextName = `${label_prefix}:${env}:${region}:${service_name}:${label_postfix}`;
-        // Transformed context name with hyphens for querying and creation
-        const contextID = contextName.replace(/:/g, '-');
+        const contextID = contextName.replace(/:/g, '-'); // Transformed context name with hyphens
         const contextValues = this.loadEnvValuesFromYaml(spaceId, contextName);
         const existingContext = await this.getContextById(contextID);
         // Auto attach label
-        const autoAttachLabel = `autoattach:${stackName}`;
+        const autoAttachLabel = `autoattach:${contextName}`;
         core.info(`Auto Label to Attach to Context: ${autoAttachLabel}`);
         if (existingContext) {
             core.info(`Context with ID ${existingContext.id} already exists...`);
             // Add autoattach label to existing stack
-            existingContext.labels = autoAttachLabel;
+            existingContext.labels = [...existingContext.labels, autoAttachLabel];
             // Detect changes in config, labels, and hooks
             const hasChanges = this.detectChanges(existingContext, contextValues);
             if (hasChanges) {
                 core.info(`Changes detected in context, updating...`);
-                await this.sendContextMutation(existingContext.id, autoAttachLabel, contextValues, true); // Update existing context
+                const response = await this.sendContextMutation(existingContext.id, autoAttachLabel, contextValues, true);
+                return { ...(response || {}), contextName }; // Spread only if response is not void
             }
             else {
                 core.info(`No changes detected, skipping update.`);
+                return { ...existingContext, contextName };
             }
-            return existingContext; // Return the existing context
         }
         // Create new context
         core.info(`Context ${contextName} doesn't exist, creating...`);
-        await this.sendContextMutation(undefined, autoAttachLabel, contextValues);
+        const response = await this.sendContextMutation(undefined, autoAttachLabel, contextValues);
         core.info(`Context created successfully.`);
+        return { ...(response || {}), contextName }; // Include contextName safely
     }
 }
 exports["default"] = ContextManager;
@@ -840,18 +836,18 @@ class StackManager extends graphQLManager_1.default {
         this.integrationManager = new integrationManager_1.default(); // Initialize in the constructor
     }
     // Method to upsert a stack
-    async upsertStack(stackName, customSpace, integration_name, inputs) {
+    async upsertStack(stackName, contextName, customSpace, integration_name, inputs) {
         const existingStack = await this.getStackByName(stackName);
         let newStack;
         if (existingStack) {
             core.info(`Updating existing stack: ${stackName}`);
             await this.waitForStackRunsToFinish(stackName); // Ensure runs are finished
             await this.waitForStackToBeReady(stackName);
-            await this.updateStack(existingStack.id, customSpace, inputs);
+            await this.updateStack(existingStack.id, contextName, customSpace, inputs);
         }
         else {
             core.info(`Creating new stack: ${stackName}`);
-            newStack = await this.createStack(stackName, customSpace, inputs);
+            newStack = await this.createStack(stackName, contextName, customSpace, inputs);
         }
         const stackId = existingStack?.id || newStack?.id;
         if (stackId) {
@@ -876,9 +872,9 @@ class StackManager extends graphQLManager_1.default {
         }
     }
     // Method to update a stack
-    async updateStack(stackId, customSpace, inputs) {
+    async updateStack(stackId, contextName, customSpace, inputs) {
         core.info(`Updating stack with ID: ${stackId}`);
-        const stackInput = await this.prepareStackInput(stackId, customSpace, inputs);
+        const stackInput = await this.prepareStackInput(stackId, contextName, customSpace, inputs);
         core.info(`Prepared stack input: ${JSON.stringify(stackInput)}`);
         const mutationQuery = {
             query: `mutation UpdateStack($id: ID!, $input: StackInput!) {
@@ -894,8 +890,8 @@ class StackManager extends graphQLManager_1.default {
         core.info(`Stack ${stackId} updated successfully.`);
     }
     // Method to create a stack
-    async createStack(stackName, customSpace, inputs) {
-        const stackInput = await this.prepareStackInput(stackName, customSpace, inputs);
+    async createStack(stackName, contextName, customSpace, inputs) {
+        const stackInput = await this.prepareStackInput(stackName, contextName, customSpace, inputs);
         const mutationQuery = {
             query: `mutation CreateStack($input: StackInput!, $manageState: Boolean!) {
         stackCreate(input: $input, manageState: $manageState) {
@@ -914,13 +910,13 @@ class StackManager extends graphQLManager_1.default {
         return response.stackCreate;
     }
     // Method to prepare the stack input
-    async prepareStackInput(stackName, customSpace, inputs) {
+    async prepareStackInput(stackName, contextName, customSpace, inputs) {
         const yamlInput = (0, child_process_1.execSync)('yq -o=json eval ./deployment/service/stack.yml').toString();
         const jsonInput = JSON.parse(yamlInput);
         jsonInput.name = stackName;
         jsonInput.labels.push(`env:${inputs.env}`);
         jsonInput.labels.push(`region:${inputs.region}`);
-        jsonInput.labels.push(`unique_name:${stackName}`);
+        jsonInput.labels.push(`${contextName}`);
         jsonInput.space = customSpace;
         return jsonInput;
     }
@@ -1107,7 +1103,7 @@ const run = async (inputs) => {
         else {
             core.info(`Stack "${stackName}" does not exist. Proceeding to create a new stack.`);
         }
-        if (!existingStack || command.includes('deploy') || command.includes('preview')) {
+        if (!existingStack) {
             // Declare the spaceId variable to be used later
             let spaceId;
             // Create service space and upsert the stack
@@ -1122,20 +1118,23 @@ const run = async (inputs) => {
             try {
                 // Initialize the ContextManager with required values
                 const contextManager = new contextManager_1.default();
-                // Call createOrUpdateContext without passing yamlFilePath or contextName
-                const result = await contextManager.createOrUpdateContext(spaceId, stackName, inputs);
-                core.info(`Context result: ${JSON.stringify(result)}`);
+                // Call createOrUpdateContext
+                const contextResult = await contextManager.createOrUpdateContext(spaceId, inputs);
+                core.info(`Context result: ${JSON.stringify(contextResult)}`);
+                // Access contextName directly
+                const contextName = contextResult.contextName;
+                core.info(`Context name: ${contextName}`);
+                try {
+                    // Call the upsertStack method and pass contextName
+                    await graphqlStackManager.upsertStack(stackName, contextName, spaceId, integration_name, inputs);
+                    core.info(`Stack "${stackName}" was successfully upserted.`);
+                }
+                catch (error) {
+                    core.error(`Failed to upsert stack: ${error.message}`);
+                }
             }
             catch (error) {
                 core.error(`Failed to manage context: ${error.message}`);
-            }
-            try {
-                // Call the upsertStack method to create or update the stack
-                await graphqlStackManager.upsertStack(stackName, spaceId, integration_name, inputs);
-                core.info(`Stack "${stackName}" was successfully upserted.`);
-            }
-            catch (error) {
-                core.error(`Failed to upsert stack: ${error.message}`);
             }
         }
         // Run command on stack

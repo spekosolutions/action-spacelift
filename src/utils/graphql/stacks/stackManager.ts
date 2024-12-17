@@ -12,7 +12,7 @@ class StackManager extends GraphQLManager {
   }
 
   // Method to upsert a stack
-  async upsertStack(stackName: string, customSpace: string, integration_name: string, inputs: any): Promise<void> {
+  async upsertStack(stackName: string, contextName: string, customSpace: string, integration_name: string, inputs: any): Promise<void> {
     const existingStack = await this.getStackByName(stackName)
     let newStack: { id: string } | undefined
 
@@ -20,10 +20,10 @@ class StackManager extends GraphQLManager {
       core.info(`Updating existing stack: ${stackName}`)
       await this.waitForStackRunsToFinish(stackName) // Ensure runs are finished
       await this.waitForStackToBeReady(stackName)
-      await this.updateStack(existingStack.id, customSpace, inputs)
+      await this.updateStack(existingStack.id, contextName, customSpace, inputs)
     } else {
       core.info(`Creating new stack: ${stackName}`)
-      newStack = await this.createStack(stackName, customSpace, inputs)
+      newStack = await this.createStack(stackName, contextName, customSpace, inputs)
     }
 
     const stackId = existingStack?.id || newStack?.id
@@ -51,10 +51,10 @@ class StackManager extends GraphQLManager {
   }
 
   // Method to update a stack
-  async updateStack(stackId: string, customSpace: string, inputs: any): Promise<void> {
+  async updateStack(stackId: string, contextName: string, customSpace: string, inputs: any): Promise<void> {
     core.info(`Updating stack with ID: ${stackId}`)
 
-    const stackInput = await this.prepareStackInput(stackId, customSpace, inputs)
+    const stackInput = await this.prepareStackInput(stackId, contextName, customSpace, inputs)
     core.info(`Prepared stack input: ${JSON.stringify(stackInput)}`)
 
     const mutationQuery = {
@@ -74,8 +74,8 @@ class StackManager extends GraphQLManager {
   }
 
   // Method to create a stack
-  async createStack(stackName: string, customSpace: string, inputs: any): Promise<{ id: string } | undefined> {
-    const stackInput = await this.prepareStackInput(stackName, customSpace, inputs)
+  async createStack(stackName: string, contextName: string, customSpace: string, inputs: any): Promise<{ id: string } | undefined> {
+    const stackInput = await this.prepareStackInput(stackName, contextName, customSpace, inputs)
 
     const mutationQuery = {
       query: `mutation CreateStack($input: StackInput!, $manageState: Boolean!) {
@@ -97,13 +97,13 @@ class StackManager extends GraphQLManager {
   }
 
   // Method to prepare the stack input
-  async prepareStackInput(stackName: string, customSpace: string, inputs: any) {
+  async prepareStackInput(stackName: string, contextName: string, customSpace: string, inputs: any) {
     const yamlInput = execSync('yq -o=json eval ./deployment/service/stack.yml').toString()
     const jsonInput = JSON.parse(yamlInput)
     jsonInput.name = stackName
     jsonInput.labels.push(`env:${inputs.env}`)
     jsonInput.labels.push(`region:${inputs.region}`)
-    jsonInput.labels.push(`unique_name:${stackName}`)
+    jsonInput.labels.push(`${contextName}`)
     jsonInput.space = customSpace
     return jsonInput
   }

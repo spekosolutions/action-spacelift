@@ -36,18 +36,18 @@ class StackManager extends graphQLManager_1.default {
         this.integrationManager = new integrationManager_1.default(); // Initialize in the constructor
     }
     // Method to upsert a stack
-    async upsertStack(stackName, customSpace, integration_name, inputs) {
+    async upsertStack(stackName, contextName, customSpace, integration_name, inputs) {
         const existingStack = await this.getStackByName(stackName);
         let newStack;
         if (existingStack) {
             core.info(`Updating existing stack: ${stackName}`);
             await this.waitForStackRunsToFinish(stackName); // Ensure runs are finished
             await this.waitForStackToBeReady(stackName);
-            await this.updateStack(existingStack.id, customSpace, inputs);
+            await this.updateStack(existingStack.id, contextName, customSpace, inputs);
         }
         else {
             core.info(`Creating new stack: ${stackName}`);
-            newStack = await this.createStack(stackName, customSpace, inputs);
+            newStack = await this.createStack(stackName, contextName, customSpace, inputs);
         }
         const stackId = existingStack?.id || newStack?.id;
         if (stackId) {
@@ -72,9 +72,9 @@ class StackManager extends graphQLManager_1.default {
         }
     }
     // Method to update a stack
-    async updateStack(stackId, customSpace, inputs) {
+    async updateStack(stackId, contextName, customSpace, inputs) {
         core.info(`Updating stack with ID: ${stackId}`);
-        const stackInput = await this.prepareStackInput(stackId, customSpace, inputs);
+        const stackInput = await this.prepareStackInput(stackId, contextName, customSpace, inputs);
         core.info(`Prepared stack input: ${JSON.stringify(stackInput)}`);
         const mutationQuery = {
             query: `mutation UpdateStack($id: ID!, $input: StackInput!) {
@@ -90,8 +90,8 @@ class StackManager extends graphQLManager_1.default {
         core.info(`Stack ${stackId} updated successfully.`);
     }
     // Method to create a stack
-    async createStack(stackName, customSpace, inputs) {
-        const stackInput = await this.prepareStackInput(stackName, customSpace, inputs);
+    async createStack(stackName, contextName, customSpace, inputs) {
+        const stackInput = await this.prepareStackInput(stackName, contextName, customSpace, inputs);
         const mutationQuery = {
             query: `mutation CreateStack($input: StackInput!, $manageState: Boolean!) {
         stackCreate(input: $input, manageState: $manageState) {
@@ -110,13 +110,13 @@ class StackManager extends graphQLManager_1.default {
         return response.stackCreate;
     }
     // Method to prepare the stack input
-    async prepareStackInput(stackName, customSpace, inputs) {
+    async prepareStackInput(stackName, contextName, customSpace, inputs) {
         const yamlInput = (0, child_process_1.execSync)('yq -o=json eval ./deployment/service/stack.yml').toString();
         const jsonInput = JSON.parse(yamlInput);
         jsonInput.name = stackName;
         jsonInput.labels.push(`env:${inputs.env}`);
         jsonInput.labels.push(`region:${inputs.region}`);
-        jsonInput.labels.push(`unique_name:${stackName}`);
+        jsonInput.labels.push(`${contextName}`);
         jsonInput.space = customSpace;
         return jsonInput;
     }

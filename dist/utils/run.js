@@ -57,7 +57,7 @@ const run = async (inputs) => {
         else {
             core.info(`Stack "${stackName}" does not exist. Proceeding to create a new stack.`);
         }
-        if (!existingStack || command.includes('deploy') || command.includes('preview')) {
+        if (!existingStack) {
             // Declare the spaceId variable to be used later
             let spaceId;
             // Create service space and upsert the stack
@@ -72,20 +72,23 @@ const run = async (inputs) => {
             try {
                 // Initialize the ContextManager with required values
                 const contextManager = new contextManager_1.default();
-                // Call createOrUpdateContext without passing yamlFilePath or contextName
-                const result = await contextManager.createOrUpdateContext(spaceId, stackName, inputs);
-                core.info(`Context result: ${JSON.stringify(result)}`);
+                // Call createOrUpdateContext
+                const contextResult = await contextManager.createOrUpdateContext(spaceId, inputs);
+                core.info(`Context result: ${JSON.stringify(contextResult)}`);
+                // Access contextName directly
+                const contextName = contextResult.contextName;
+                core.info(`Context name: ${contextName}`);
+                try {
+                    // Call the upsertStack method and pass contextName
+                    await graphqlStackManager.upsertStack(stackName, contextName, spaceId, integration_name, inputs);
+                    core.info(`Stack "${stackName}" was successfully upserted.`);
+                }
+                catch (error) {
+                    core.error(`Failed to upsert stack: ${error.message}`);
+                }
             }
             catch (error) {
                 core.error(`Failed to manage context: ${error.message}`);
-            }
-            try {
-                // Call the upsertStack method to create or update the stack
-                await graphqlStackManager.upsertStack(stackName, spaceId, integration_name, inputs);
-                core.info(`Stack "${stackName}" was successfully upserted.`);
-            }
-            catch (error) {
-                core.error(`Failed to upsert stack: ${error.message}`);
             }
         }
         // Run command on stack
