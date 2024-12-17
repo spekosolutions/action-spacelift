@@ -880,12 +880,12 @@ class StackManager extends graphQLManager_1.default {
         const stackInput = await this.prepareStackInput(stackId, customSpace, inputs);
         core.info(`Prepared stack input: ${JSON.stringify(stackInput)}`);
         const mutationQuery = {
-            query: `mutation UpdateStack($id: ID!, $input: StackInput!, $manageState: Boolean!) {
-        stackUpdate(id: $id, input: $input, manageState: $manageState) {
+            query: `mutation UpdateStack($id: ID!, $input: StackInput!) {
+        stackUpdate(id: $id, input: $input) {
           id
         }
       }`,
-            variables: { id: stackId, manageState: true, input: stackInput },
+            variables: { id: stackId, input: stackInput },
         };
         await this.waitForStackRunsToFinish(stackId); // Ensure runs are finished
         await this.waitForStackToBeReady(stackId);
