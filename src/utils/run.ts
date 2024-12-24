@@ -90,7 +90,19 @@ export const run = async (inputs: Inputs): Promise<void> => {
       graphqlStackManager.waitForStackToBeReady(stackName);
       const spacectlStackManager = new SpacectlStackManager();
       core.info(`Running command: ${command} on stack: ${stackName}`);
-
+      
+      if (!existingStack) {
+        // Extract --sha value from the command
+        const shaMatch = command.match(/--sha\s+(\S+)/);
+        if (shaMatch) {
+          const shaValue = shaMatch[1]; // Extract the captured group
+          const newCommand = `deploy --sha ${shaValue}`;
+          await spacectlStackManager.runCommand(stackName, newCommand);
+        } else {
+          console.error("SHA value not found in the command");
+        }
+      }
+      
       await spacectlStackManager.runCommand(stackName, command);
       core.info(`Command "${command}" ran successfully on stack "${stackName}"`);
 
