@@ -31,6 +31,11 @@ export const run = async (inputs: Inputs): Promise<void> => {
     const stackName = `${label_postfix}-${service_name}-${env}-${region}`
     core.info(`Using stack name: ${stackName}`)
 
+    if (!command){
+      core.info(`Stack command is empty or not set for: ${stackName}`)
+      process.exit(1);
+    }
+
     // Generate a unique tag
     const uniqueTag = generateUniqueTag()
     core.info(`Generated unique tag: ${uniqueTag}`)
@@ -45,44 +50,42 @@ export const run = async (inputs: Inputs): Promise<void> => {
       core.info(`Stack "${stackName}" does not exist. Proceeding to create a new stack.`);
     }
 
-    if (!existingStack || command.includes('deploy') || command.includes('preview')) {
-      // Declare the spaceId variable to be used later
-      let spaceId: string
+    // Declare the spaceId variable to be used later
+    let spaceId: string
 
-      // Create service space and upsert the stack
-      const spaceManager = new SpaceManager()
+    // Create service space and upsert the stack
+    const spaceManager = new SpaceManager()
 
-      try {
-        spaceId = await spaceManager.createServiceSpace(inputs)
-      } catch (error) {
-        core.error('Error creating service space:')
-        throw error
-      }
-
-      try {
-        // Initialize the ContextManager with required values
-        const contextManager = new ContextManager();
-      
-        // Call createOrUpdateContext
-        const contextResult = await contextManager.createOrUpdateContext(spaceId, inputs);
-        core.info(`Context result: ${JSON.stringify(contextResult)}`);
-        
-        // Access contextName directly
-        const contextName = contextResult.contextName;
-      
-        core.info(`Context name: ${contextName}`);
-        
-        try {
-          // Call the upsertStack method and pass contextName
-          await graphqlStackManager.upsertStack(stackName, contextName, spaceId, integration_name, inputs);
-          core.info(`Stack "${stackName}" was successfully upserted.`);
-        } catch (error) {
-          core.error(`Failed to upsert stack: ${(error as Error).message}`);
-        }
-      } catch (error) {
-        core.error(`Failed to manage context: ${(error as Error).message}`);
-      }      
+    try {
+      spaceId = await spaceManager.createServiceSpace(inputs)
+    } catch (error) {
+      core.error('Error creating service space:')
+      throw error
     }
+
+    try {
+      // Initialize the ContextManager with required values
+      const contextManager = new ContextManager();
+    
+      // Call createOrUpdateContext
+      const contextResult = await contextManager.createOrUpdateContext(spaceId, inputs);
+      core.info(`Context result: ${JSON.stringify(contextResult)}`);
+      
+      // Access contextName directly
+      const contextName = contextResult.contextName;
+    
+      core.info(`Context name: ${contextName}`);
+      
+      try {
+        // Call the upsertStack method and pass contextName
+        await graphqlStackManager.upsertStack(stackName, contextName, spaceId, integration_name, inputs);
+        core.info(`Stack "${stackName}" was successfully upserted.`);
+      } catch (error) {
+        core.error(`Failed to upsert stack: ${(error as Error).message}`);
+      }
+    } catch (error) {
+      core.error(`Failed to manage context: ${(error as Error).message}`);
+    }      
 
     // Run command on stack
     try {
@@ -102,7 +105,7 @@ export const run = async (inputs: Inputs): Promise<void> => {
           console.error("SHA value not found in the command");
         }
       }
-      
+
       await spacectlStackManager.runCommand(stackName, command);
       core.info(`Command "${command}" ran successfully on stack "${stackName}"`);
 
