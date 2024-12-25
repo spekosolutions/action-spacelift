@@ -89,8 +89,8 @@ export const run = async (inputs: Inputs): Promise<void> => {
 
     // Run command on stack
     try {
-      graphqlStackManager.waitForStackRunsToFinish(stackName);
-      graphqlStackManager.waitForStackToBeReady(stackName);
+      await graphqlStackManager.waitForStackRunsToFinish(stackName);
+      await graphqlStackManager.waitForStackToBeReady(stackName);
       const spacectlStackManager = new SpacectlStackManager();
       core.info(`Running command: ${command} on stack: ${stackName}`);
       
@@ -105,6 +105,9 @@ export const run = async (inputs: Inputs): Promise<void> => {
           console.error("SHA value not found in the command");
         }
       }
+
+      await graphqlStackManager.waitForStackRunsToFinish(stackName);
+      await graphqlStackManager.waitForStackToBeReady(stackName);
 
       await spacectlStackManager.runCommand(stackName, command);
       core.info(`Command "${command}" ran successfully on stack "${stackName}"`);
