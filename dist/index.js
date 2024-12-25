@@ -1165,6 +1165,7 @@ const run = async (inputs) => {
                     const shaValue = shaMatch[1]; // Extract the captured group
                     const newCommand = `deploy --sha ${shaValue}`;
                     await spacectlStackManager.runCommand(stackName, newCommand);
+                    core.info(`First time run..sent command deploy --sha ${shaValue} to "${stackName}".`);
                 }
                 else {
                     console.error("SHA value not found in the command");
