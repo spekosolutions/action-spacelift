@@ -26,6 +26,7 @@ export const run = async (inputs: Inputs): Promise<void> => {
   try {
     // Destructure the necessary fields from inputs
     const { command, label_postfix, service_name, env, integration_name, region } = inputs
+    const githubSha = process.env.GITHUB_SHA;
 
     // Construct stack name from inputs
     const stackName = `${label_postfix}-${service_name}-${env}-${region}`
@@ -95,16 +96,9 @@ export const run = async (inputs: Inputs): Promise<void> => {
       core.info(`Running command: ${command} on stack: ${stackName}`);
       
       if (!existingStack) {
-        // Extract --sha value from the command
-        const shaMatch = command.match(/--sha\s+(\S+)/);
-        if (shaMatch) {
-          const shaValue = shaMatch[1]; // Extract the captured group
-          const newCommand = `deploy --sha ${shaValue}`;
-          await spacectlStackManager.runCommand(stackName, newCommand);
-          core.info(`First time run..sent command deploy --sha ${shaValue} to "${stackName}".`);
-        } else {
-          console.error("SHA value not found in the command");
-        }
+        const newCommand = `deploy --sha ${githubSha}`;
+        await spacectlStackManager.runCommand(stackName, newCommand);
+        core.info(`First time run..sent command deploy --sha ${githubSha} to "${stackName}".`);
       }
 
       await graphqlStackManager.waitForStackRunsToFinish(stackName);
