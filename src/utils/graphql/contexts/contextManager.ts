@@ -11,43 +11,61 @@ class ContextManager extends GraphQLManager {
     this.yamlFilePath = yamlFilePath
   }
 
+  // Method to merge envVars into configAttachments
+  private mergeEnvVarsWithConfigAttachments(envVars: Record<string, any>, configAttachments: any[]): any[] {
+    const mergedConfigAttachments = [...configAttachments]
+
+    for (const [key, value] of Object.entries(envVars)) {
+      const existingIndex = mergedConfigAttachments.findIndex((attachment) => attachment.id === key)
+
+      if (existingIndex !== -1) {
+        // Update existing configAttachment
+        mergedConfigAttachments[existingIndex].value = value
+      } else {
+        // Add new configAttachment
+        mergedConfigAttachments.push({
+          id: key,
+          type: 'ENVIRONMENT_VARIABLE',
+          value: value,
+          writeOnly: true,
+          description: '',
+          fileMode: '0644',
+        })
+      }
+    }
+
+    return mergedConfigAttachments
+  }
+  
   // Method to load YAML and merge with additional inputs (spaceId)
-  private loadEnvValuesFromYaml(spaceId: string, contextName: string): any {
+  // Method to load YAML and merge with additional inputs (spaceId, envVars)
+  private loadEnvValuesFromYaml(spaceId: string, contextName: string, envVars: Record<string, any>): any {
     try {
       const fileContents = fs.readFileSync(this.yamlFilePath, 'utf8')
       const parsedYaml = yaml.parse(fileContents)
 
-      // Perform validation on the YAML content to ensure required fields are present
-      if (!parsedYaml.configAttachments || parsedYaml.configAttachments.length === 0) {
-        core.setFailed("Missing 'configAttachments' in YAML.")
-        throw new Error("Missing 'configAttachments' in YAML.")
+      // Validate YAML structure
+      if (!parsedYaml.configAttachments || !Array.isArray(parsedYaml.configAttachments)) {
+        core.setFailed("Missing or invalid 'configAttachments' in YAML.")
+        throw new Error("Missing or invalid 'configAttachments' in YAML.")
       }
 
-      // Check for other critical values in configAttachments
-      parsedYaml.configAttachments.forEach((config: any) => {
-        if (!config.id || !config.value) {
-          core.setFailed("Each configAttachment must have a valid 'id' and 'value'.")
-          throw new Error("Each configAttachment must have a valid 'id' and 'value'.")
-        }
-        if (!config.type) {
-          config.type = 'ENVIRONMENT_VARIABLE' // Default to ENVIRONMENT_VARIABLE if not provided
-        }
-        if (config.writeOnly === undefined) {
-          config.writeOnly = true // Default to true if not provided
-        }
-      })
+      // Merge envVars with configAttachments
+      const mergedConfigAttachments = this.mergeEnvVarsWithConfigAttachments(envVars, parsedYaml.configAttachments)
 
       return {
         ...parsedYaml,
         space: spaceId,
         name: contextName,
+        configAttachments: mergedConfigAttachments,
       }
     } catch (error) {
-      core.setFailed(`Failed to load env values from YAML: ${(error as Error).message}`)
+      core.setFailed(`Failed to load and merge env values from YAML: ${(error as Error).message}`)
       throw error
     }
   }
 
+  // Method to query the existing context by ID
   // Method to query the existing context by ID
   async getContextById(contextID: string): Promise<any | null> {
     const query = {
@@ -86,24 +104,17 @@ class ContextManager extends GraphQLManager {
     }
 
     try {
-      // Log the query and variables
       core.info(`Executing GraphQL query to get context by ID: ${contextID}`)
-      core.info(`Query variables: ${JSON.stringify(query.variables)}`)
-
       const response = await this.sendRequest(query)
-
-      // Log the full response, whether it contains a context or not
-      core.info(`Full GraphQL response: ${JSON.stringify(response)}`)
 
       if (response?.context) {
         core.info(`Context found: ID = ${response.context.id}, Name = ${response.context.name}`)
         return response.context
       } else {
-        core.info(`No context found for ID: ${contextID}. Response: ${JSON.stringify(response)}`)
+        core.info(`No context found for ID: ${contextID}.`)
         return null
       }
     } catch (error) {
-      // Log the error if the GraphQL query fails
       core.error(`Failed to get context by ID: ${contextID}. Error: ${(error as Error).message}`)
       throw error
     }
@@ -210,46 +221,43 @@ class ContextManager extends GraphQLManager {
   }
   
   // Main method to create or update the context based on changes
-  async createOrUpdateContext(spaceId: string, inputs: any): Promise<any> {
-    const { label_prefix, env, region, service_name, label_postfix } = inputs;
+  async createOrUpdateContext(spaceId: string, extra_vars: any, inputs: any): Promise<any> {
+    const { label_prefix, env, region, service_name, label_postfix, env_vars } = inputs
 
     // Generate context name and ID
-    const contextName = `${label_prefix}:${env}:${region}:${service_name}:${label_postfix}`;
-    const contextID = contextName.replace(/:/g, '-'); // Transformed context name with hyphens
+    const contextName = `${label_prefix}:${env}:${region}:${service_name}:${label_postfix}`
+    const contextID = contextName.replace(/:/g, '-')
 
-    const contextValues = this.loadEnvValuesFromYaml(spaceId, contextName);
-    const existingContext = await this.getContextById(contextID);
+    // Load and merge values
+    const envVars = JSON.parse(extra_vars) // Parse env_vars from JSON string to dictionary
+    const contextValues = this.loadEnvValuesFromYaml(spaceId, contextName, envVars)
+    const existingContext = await this.getContextById(contextID)
 
-    // Auto attach label
-    const autoAttachLabel = `autoattach:${contextName}`;
-    core.info(`Auto Label to Attach to Context: ${autoAttachLabel}`);
+    const autoAttachLabel = `autoattach:${contextName}`
+    core.info(`Auto Label to Attach to Context: ${autoAttachLabel}`)
 
     if (existingContext) {
-      core.info(`Context with ID ${existingContext.id} already exists...`);
+      core.info(`Context with ID ${existingContext.id} already exists...`)
 
-      // Add autoattach label to existing stack
-      existingContext.labels = [...existingContext.labels, autoAttachLabel];
-
-      // Detect changes in config, labels, and hooks
-      const hasChanges = this.detectChanges(existingContext, contextValues);
+      existingContext.labels = [...existingContext.labels, autoAttachLabel]
+      const hasChanges = this.detectChanges(existingContext, contextValues)
 
       if (hasChanges) {
-        core.info(`Changes detected in context, updating...`);
-        const response = await this.sendContextMutation(existingContext.id, autoAttachLabel, contextValues, true);
+        core.info(`Changes detected in context, updating...`)
+        const response = await this.sendContextMutation(existingContext.id, autoAttachLabel, contextValues, true)
 
-        return { ...(response || {}), contextName }; // Spread only if response is not void
+        return { ...(response || {}), contextName }
       } else {
-        core.info(`No changes detected, skipping update.`);
-        return { ...existingContext, contextName };
+        core.info(`No changes detected, skipping update.`)
+        return { ...existingContext, contextName }
       }
     }
 
-    // Create new context
-    core.info(`Context ${contextName} doesn't exist, creating...`);
-    const response = await this.sendContextMutation(undefined, autoAttachLabel, contextValues);
-    core.info(`Context created successfully.`);
+    core.info(`Context ${contextName} doesn't exist, creating...`)
+    const response = await this.sendContextMutation(undefined, autoAttachLabel, contextValues)
+    core.info(`Context created successfully.`)
 
-    return { ...(response || {}), contextName }; // Include contextName safely
+    return { ...(response || {}), contextName }
   }
 
 }

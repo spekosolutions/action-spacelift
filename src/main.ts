@@ -12,6 +12,7 @@ const main = async (): Promise<void> => {
     await run({
       command: core.getInput('command', { required: true }),
       region: core.getInput('region', { required: true }),
+      zone: core.getInput('zone', { required: true }),
       env: core.getInput('env', { required: true }),
       integration_name: core.getInput('integration_name', { required: true }),
       service_name: core.getInput('service_name', { required: true }),

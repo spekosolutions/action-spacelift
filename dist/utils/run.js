@@ -41,11 +41,26 @@ const graphqlStackManager = new stackManager_1.default();
 const run = async (inputs) => {
     try {
         // Destructure the necessary fields from inputs
-        const { command, label_postfix, service_name, env, integration_name, region } = inputs;
+        const { command, label_postfix, service_name, env, integration_name, zone, region } = inputs;
         const githubSha = process.env.GITHUB_SHA;
         // Construct stack name from inputs
-        const stackName = `${label_postfix}-${service_name}-${env}-${region}`;
+        const stackName = `${label_postfix}-${service_name}-${env}-${zone}`;
         core.info(`Using stack name: ${stackName}`);
+        // Parse env_vars from string to JSON object
+        let envVars;
+        try {
+            envVars = JSON.parse(inputs.env_vars);
+            core.info(`Parsed env_vars: ${JSON.stringify(envVars)}`);
+        }
+        catch (error) {
+            core.setFailed(`Failed to parse env_vars JSON: ${error.message}`);
+            return;
+        }
+        // Append additional fields to envVars
+        envVars.env = env;
+        envVars.region = region;
+        envVars.zone = zone;
+        core.info(`Updated env_vars: ${JSON.stringify(envVars)}`);
         if (!command) {
             core.info(`Stack command is empty or not set for: ${stackName}`);
             process.exit(1);
@@ -77,7 +92,7 @@ const run = async (inputs) => {
             // Initialize the ContextManager with required values
             const contextManager = new contextManager_1.default();
             // Call createOrUpdateContext
-            const contextResult = await contextManager.createOrUpdateContext(spaceId, inputs);
+            const contextResult = await contextManager.createOrUpdateContext(spaceId, envVars, inputs);
             core.info(`Context result: ${JSON.stringify(contextResult)}`);
             // Access contextName directly
             const contextName = contextResult.contextName;
