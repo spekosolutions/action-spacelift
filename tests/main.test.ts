@@ -3,7 +3,7 @@ import * as core from '@actions/core';
 import * as github from '@actions/github';
 import { installAndGetFolder } from '../src/commands/spacectl';
 
-type InputKeys = 'command' | 'region' | 'env' | 'integration_name' | 'service_name' | 'label_prefix' | 'label_postfix' | 'github-token';
+type InputKeys = 'command' | 'region' | 'env' | 'integration_name' | 'service_name' | 'label_prefix' | 'label_postfix' | 'github-token' | 'env_vars';
 
 jest.mock('@actions/core');
 jest.mock('@actions/github');
@@ -35,6 +35,7 @@ describe('Main Action', () => {
           label_prefix: 'foo',
           label_postfix: 'foo',
           'github-token': 'test-token',
+          env_vars: '{}',
         };
         return inputs[name as InputKeys];
       });

@@ -17,6 +17,7 @@ const main = async (): Promise<void> => {
       service_name: core.getInput('service_name', { required: true }),
       label_prefix: core.getInput('label_prefix', { required: true }),
       label_postfix: core.getInput('label_postfix', { required: true }),
+      env_vars: core.getInput('env_vars', { required: false }),
     });
   } catch (e) {
     core.setFailed((e as Error).message);

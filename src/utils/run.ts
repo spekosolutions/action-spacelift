@@ -12,6 +12,7 @@ type Inputs = {
   service_name: string
   label_prefix: string
   label_postfix: string
+  env_vars: string
 }
 
 // Helper to generate a unique tag for the stack
