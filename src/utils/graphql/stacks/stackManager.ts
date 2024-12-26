@@ -53,7 +53,10 @@ class StackManager extends GraphQLManager {
   // Method to update a stack
   async updateStack(stackId: string, contextName: string, customSpace: string, inputs: any): Promise<void> {
     core.info(`Updating stack with ID: ${stackId}`)
-
+    
+    await this.waitForStackRunsToFinish(stackId) // Ensure runs are finished
+    await this.waitForStackToBeReady(stackId)
+    
     const stackInput = await this.prepareStackInput(stackId, contextName, customSpace, inputs)
     core.info(`Prepared stack input: ${JSON.stringify(stackInput)}`)
 

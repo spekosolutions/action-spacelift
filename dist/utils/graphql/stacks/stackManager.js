@@ -74,6 +74,8 @@ class StackManager extends graphQLManager_1.default {
     // Method to update a stack
     async updateStack(stackId, contextName, customSpace, inputs) {
         core.info(`Updating stack with ID: ${stackId}`);
+        await this.waitForStackRunsToFinish(stackId); // Ensure runs are finished
+        await this.waitForStackToBeReady(stackId);
         const stackInput = await this.prepareStackInput(stackId, contextName, customSpace, inputs);
         core.info(`Prepared stack input: ${JSON.stringify(stackInput)}`);
         const mutationQuery = {

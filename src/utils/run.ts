@@ -78,6 +78,8 @@ export const run = async (inputs: Inputs): Promise<void> => {
       core.info(`Context name: ${contextName}`);
       
       try {
+        await graphqlStackManager.waitForStackRunsToFinish(stackName);
+        await graphqlStackManager.waitForStackToBeReady(stackName);
         // Call the upsertStack method and pass contextName
         await graphqlStackManager.upsertStack(stackName, contextName, spaceId, integration_name, inputs);
         core.info(`Stack "${stackName}" was successfully upserted.`);
@@ -106,7 +108,10 @@ export const run = async (inputs: Inputs): Promise<void> => {
 
       await spacectlStackManager.runCommand(stackName, command);
       core.info(`Command "${command}" ran successfully on stack "${stackName}"`);
-
+      
+      await graphqlStackManager.waitForStackRunsToFinish(stackName);
+      await graphqlStackManager.waitForStackToBeReady(stackName);
+      
       core.info(`Retrieving stack outputs for: ${stackName}`);
       const outputs = await spacectlStackManager.getStackOutputs(stackName);
       core.info(`Stack outputs: ${JSON.stringify(outputs)}`);

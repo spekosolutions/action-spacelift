@@ -887,6 +887,8 @@ class StackManager extends graphQLManager_1.default {
     // Method to update a stack
     async updateStack(stackId, contextName, customSpace, inputs) {
         core.info(`Updating stack with ID: ${stackId}`);
+        await this.waitForStackRunsToFinish(stackId); // Ensure runs are finished
+        await this.waitForStackToBeReady(stackId);
         const stackInput = await this.prepareStackInput(stackId, contextName, customSpace, inputs);
         core.info(`Prepared stack input: ${JSON.stringify(stackInput)}`);
         const mutationQuery = {
@@ -1142,6 +1144,8 @@ const run = async (inputs) => {
             const contextName = contextResult.contextName;
             core.info(`Context name: ${contextName}`);
             try {
+                await graphqlStackManager.waitForStackRunsToFinish(stackName);
+                await graphqlStackManager.waitForStackToBeReady(stackName);
                 // Call the upsertStack method and pass contextName
                 await graphqlStackManager.upsertStack(stackName, contextName, spaceId, integration_name, inputs);
                 core.info(`Stack "${stackName}" was successfully upserted.`);
@@ -1168,6 +1172,8 @@ const run = async (inputs) => {
             await graphqlStackManager.waitForStackToBeReady(stackName);
             await spacectlStackManager.runCommand(stackName, command);
             core.info(`Command "${command}" ran successfully on stack "${stackName}"`);
+            await graphqlStackManager.waitForStackRunsToFinish(stackName);
+            await graphqlStackManager.waitForStackToBeReady(stackName);
             core.info(`Retrieving stack outputs for: ${stackName}`);
             const outputs = await spacectlStackManager.getStackOutputs(stackName);
             core.info(`Stack outputs: ${JSON.stringify(outputs)}`);
