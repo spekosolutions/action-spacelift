@@ -31,6 +31,10 @@ inputs:
     description: "GitHub token"
     required: false
     default: ${{ github.token }}
+  env_vars:
+    description: "Environment variables"
+    required: false
+    default: "{}"
 
 outputs:
   outputs: 
