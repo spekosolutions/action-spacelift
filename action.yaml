@@ -35,6 +35,10 @@ inputs:
     description: "Environment variables"
     required: false
     default: "{}"
+  zone:
+    description: "Environment variables"
+    required: false
+    default: "{}"
 
 outputs:
   outputs: 

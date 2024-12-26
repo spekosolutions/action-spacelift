@@ -24,7 +24,7 @@ class ContextManager extends GraphQLManager {
       } else {
         // Add new configAttachment
         mergedConfigAttachments.push({
-          id: key,
+          id: `TF_VAR_${key}`,
           type: 'ENVIRONMENT_VARIABLE',
           value: value,
           writeOnly: true,
