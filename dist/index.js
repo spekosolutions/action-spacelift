@@ -1160,8 +1160,8 @@ const run = async (inputs) => {
             const spacectlStackManager = new stackManager_2.default();
             core.info(`Running command: ${command} on stack: ${stackName}`);
             if (!existingStack) {
-                const newCommand = `deploy --sha ${githubSha}`;
-                await spacectlStackManager.runCommand(stackName, newCommand);
+                const deployCommand = `deploy --sha ${githubSha} --auto-confirm --tail`;
+                await spacectlStackManager.runCommand(stackName, deployCommand);
                 core.info(`First time run..sent command deploy --sha ${githubSha} to "${stackName}".`);
             }
             await graphqlStackManager.waitForStackRunsToFinish(stackName);
