@@ -1144,8 +1144,6 @@ const run = async (inputs) => {
             const contextName = contextResult.contextName;
             core.info(`Context name: ${contextName}`);
             try {
-                await graphqlStackManager.waitForStackRunsToFinish(stackName);
-                await graphqlStackManager.waitForStackToBeReady(stackName);
                 // Call the upsertStack method and pass contextName
                 await graphqlStackManager.upsertStack(stackName, contextName, spaceId, integration_name, inputs);
                 core.info(`Stack "${stackName}" was successfully upserted.`);
@@ -1157,10 +1155,10 @@ const run = async (inputs) => {
         catch (error) {
             core.error(`Failed to manage context: ${error.message}`);
         }
+        await graphqlStackManager.waitForStackRunsToFinish(stackName);
+        await graphqlStackManager.waitForStackToBeReady(stackName);
         // Run command on stack
         try {
-            await graphqlStackManager.waitForStackRunsToFinish(stackName);
-            await graphqlStackManager.waitForStackToBeReady(stackName);
             const spacectlStackManager = new stackManager_2.default();
             core.info(`Running command: ${command} on stack: ${stackName}`);
             if (!existingStack) {

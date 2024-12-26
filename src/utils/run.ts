@@ -78,8 +78,6 @@ export const run = async (inputs: Inputs): Promise<void> => {
       core.info(`Context name: ${contextName}`);
       
       try {
-        await graphqlStackManager.waitForStackRunsToFinish(stackName);
-        await graphqlStackManager.waitForStackToBeReady(stackName);
         // Call the upsertStack method and pass contextName
         await graphqlStackManager.upsertStack(stackName, contextName, spaceId, integration_name, inputs);
         core.info(`Stack "${stackName}" was successfully upserted.`);
@@ -89,11 +87,12 @@ export const run = async (inputs: Inputs): Promise<void> => {
     } catch (error) {
       core.error(`Failed to manage context: ${(error as Error).message}`);
     }      
+    
+    await graphqlStackManager.waitForStackRunsToFinish(stackName);
+    await graphqlStackManager.waitForStackToBeReady(stackName);
 
     // Run command on stack
     try {
-      await graphqlStackManager.waitForStackRunsToFinish(stackName);
-      await graphqlStackManager.waitForStackToBeReady(stackName);
       const spacectlStackManager = new SpacectlStackManager();
       core.info(`Running command: ${command} on stack: ${stackName}`);
       
