@@ -1112,7 +1112,7 @@ const graphqlStackManager = new stackManager_1.default();
 const run = async (inputs) => {
     try {
         // Destructure the necessary fields from inputs
-        const { command, label_postfix, service_name, env, integration_name, zone, region } = inputs;
+        const { command, label_postfix, service_name, env, integration_name, zone, region, env_vars } = inputs;
         const githubSha = process.env.GITHUB_SHA;
         // Construct stack name from inputs
         const stackName = `${label_postfix}-${service_name}-${env}-${zone}`;
@@ -1120,7 +1120,8 @@ const run = async (inputs) => {
         // Parse env_vars from string to JSON object
         let envVars;
         try {
-            envVars = JSON.parse(inputs.env_vars);
+            core.debug(`Raw env_vars input: ${env_vars}`);
+            envVars = JSON.parse(env_vars.trim());
             core.info(`Parsed env_vars: ${JSON.stringify(envVars)}`);
         }
         catch (error) {
@@ -1148,9 +1149,7 @@ const run = async (inputs) => {
         else {
             core.info(`Stack "${stackName}" does not exist. Proceeding to create a new stack.`);
         }
-        // Declare the spaceId variable to be used later
         let spaceId;
-        // Create service space and upsert the stack
         const spaceManager = new spaceManager_1.default();
         try {
             spaceId = await spaceManager.createServiceSpace(inputs);
@@ -1160,16 +1159,12 @@ const run = async (inputs) => {
             throw error;
         }
         try {
-            // Initialize the ContextManager with required values
             const contextManager = new contextManager_1.default();
-            // Call createOrUpdateContext
             const contextResult = await contextManager.createOrUpdateContext(spaceId, envVars, inputs);
             core.info(`Context result: ${JSON.stringify(contextResult)}`);
-            // Access contextName directly
             const contextName = contextResult.contextName;
             core.info(`Context name: ${contextName}`);
             try {
-                // Call the upsertStack method and pass contextName
                 await graphqlStackManager.upsertStack(stackName, contextName, spaceId, integration_name, inputs);
                 core.info(`Stack "${stackName}" was successfully upserted.`);
             }
@@ -1182,7 +1177,6 @@ const run = async (inputs) => {
         }
         await graphqlStackManager.waitForStackRunsToFinish(stackName);
         await graphqlStackManager.waitForStackToBeReady(stackName);
-        // Run command on stack
         try {
             const spacectlStackManager = new stackManager_2.default();
             core.info(`Running command: ${command} on stack: ${stackName}`);

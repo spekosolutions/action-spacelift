@@ -27,17 +27,18 @@ const graphqlStackManager = new GraphQLStackManager();
 export const run = async (inputs: Inputs): Promise<void> => {
   try {
     // Destructure the necessary fields from inputs
-    const { command, label_postfix, service_name, env, integration_name, zone, region } = inputs
+    const { command, label_postfix, service_name, env, integration_name, zone, region, env_vars } = inputs;
     const githubSha = process.env.GITHUB_SHA;
 
     // Construct stack name from inputs
-    const stackName = `${label_postfix}-${service_name}-${env}-${zone}`
-    core.info(`Using stack name: ${stackName}`)
+    const stackName = `${label_postfix}-${service_name}-${env}-${zone}`;
+    core.info(`Using stack name: ${stackName}`);
 
     // Parse env_vars from string to JSON object
     let envVars: Record<string, any>;
     try {
-      envVars = JSON.parse(inputs.env_vars);
+      core.debug(`Raw env_vars input: ${env_vars}`);
+      envVars = JSON.parse(env_vars.trim());
       core.info(`Parsed env_vars: ${JSON.stringify(envVars)}`);
     } catch (error) {
       core.setFailed(`Failed to parse env_vars JSON: ${(error as Error).message}`);
@@ -50,17 +51,17 @@ export const run = async (inputs: Inputs): Promise<void> => {
     envVars.zone = zone;
     core.info(`Updated env_vars: ${JSON.stringify(envVars)}`);
 
-    if (!command){
-      core.info(`Stack command is empty or not set for: ${stackName}`)
+    if (!command) {
+      core.info(`Stack command is empty or not set for: ${stackName}`);
       process.exit(1);
     }
 
     // Generate a unique tag
-    const uniqueTag = generateUniqueTag()
-    core.info(`Generated unique tag: ${uniqueTag}`)
+    const uniqueTag = generateUniqueTag();
+    core.info(`Generated unique tag: ${uniqueTag}`);
 
     // Check if stack exists
-    const existingStack = await graphqlStackManager.getStackByName(stackName)
+    const existingStack = await graphqlStackManager.getStackByName(stackName);
 
     if (existingStack) {
       graphqlStackManager.waitForStackRunsToFinish(stackName);
@@ -69,34 +70,26 @@ export const run = async (inputs: Inputs): Promise<void> => {
       core.info(`Stack "${stackName}" does not exist. Proceeding to create a new stack.`);
     }
 
-    // Declare the spaceId variable to be used later
-    let spaceId: string
-
-    // Create service space and upsert the stack
-    const spaceManager = new SpaceManager()
+    let spaceId: string;
+    const spaceManager = new SpaceManager();
 
     try {
-      spaceId = await spaceManager.createServiceSpace(inputs)
+      spaceId = await spaceManager.createServiceSpace(inputs);
     } catch (error) {
-      core.error('Error creating service space:')
-      throw error
+      core.error('Error creating service space:');
+      throw error;
     }
 
     try {
-      // Initialize the ContextManager with required values
       const contextManager = new ContextManager();
-    
-      // Call createOrUpdateContext
+
       const contextResult = await contextManager.createOrUpdateContext(spaceId, envVars, inputs);
       core.info(`Context result: ${JSON.stringify(contextResult)}`);
-      
-      // Access contextName directly
+
       const contextName = contextResult.contextName;
-    
       core.info(`Context name: ${contextName}`);
-      
+
       try {
-        // Call the upsertStack method and pass contextName
         await graphqlStackManager.upsertStack(stackName, contextName, spaceId, integration_name, inputs);
         core.info(`Stack "${stackName}" was successfully upserted.`);
       } catch (error) {
@@ -104,16 +97,15 @@ export const run = async (inputs: Inputs): Promise<void> => {
       }
     } catch (error) {
       core.error(`Failed to manage context: ${(error as Error).message}`);
-    }      
-    
+    }
+
     await graphqlStackManager.waitForStackRunsToFinish(stackName);
     await graphqlStackManager.waitForStackToBeReady(stackName);
 
-    // Run command on stack
     try {
       const spacectlStackManager = new SpacectlStackManager();
       core.info(`Running command: ${command} on stack: ${stackName}`);
-      
+
       if (!existingStack) {
         const deployCommand = `deploy --sha ${githubSha} --auto-confirm --tail`;
         await spacectlStackManager.runCommand(stackName, deployCommand);
@@ -125,10 +117,10 @@ export const run = async (inputs: Inputs): Promise<void> => {
 
       await spacectlStackManager.runCommand(stackName, command);
       core.info(`Command "${command}" ran successfully on stack "${stackName}"`);
-      
+
       await graphqlStackManager.waitForStackRunsToFinish(stackName);
       await graphqlStackManager.waitForStackToBeReady(stackName);
-      
+
       core.info(`Retrieving stack outputs for: ${stackName}`);
       const outputs = await spacectlStackManager.getStackOutputs(stackName);
       core.info(`Stack outputs: ${JSON.stringify(outputs)}`);
@@ -136,8 +128,7 @@ export const run = async (inputs: Inputs): Promise<void> => {
       core.setFailed(`An error occurred while running command or getting outputs: ${(error as Error).message}`);
       core.error(error as Error);
     }
-    
   } catch (error) {
-    core.setFailed(`Action failed with error: ${(error as Error).message || error}`)
+    core.setFailed(`Action failed with error: ${(error as Error).message || error}`);
   }
-}
+};
