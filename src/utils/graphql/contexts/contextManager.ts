@@ -229,7 +229,7 @@ class ContextManager extends GraphQLManager {
     const contextID = contextName.replace(/:/g, '-')
 
     // Load and merge values
-    const envVars = JSON.parse(extra_vars) // Parse env_vars from JSON string to dictionary
+    const envVars = extra_vars
     const contextValues = this.loadEnvValuesFromYaml(spaceId, contextName, envVars)
     const existingContext = await this.getContextById(contextID)
 
