@@ -35,17 +35,17 @@ export const run = async (inputs: Inputs): Promise<void> => {
     core.info(`Using stack name: ${stackName}`);
 
     // Parse env_vars from string to JSON object
-    let envVars: Record<string, any>;
-    try {
-      core.debug(`Raw env_vars input: ${env_vars}`);
-      envVars = JSON.parse(env_vars.trim());
-      core.info(`Parsed env_vars: ${JSON.stringify(envVars)}`);
-    } catch (error) {
-      core.setFailed(`Failed to parse env_vars JSON: ${(error as Error).message}`);
-      return;
-    }
+    let envVars: Record<string, any> = {};
 
-    // Append additional fields to envVars
+    // try {
+    //   core.debug(`Raw env_vars input: ${env_vars}`);
+    //   envVars = JSON.parse(env_vars.trim());
+    //   core.info(`Parsed env_vars: ${JSON.stringify(envVars)}`);
+    // } catch (error) {
+    //   core.setFailed(`Failed to parse env_vars JSON: ${(error as Error).message}`);
+    //   return;
+    // }
+
     envVars.env = env;
     envVars.region = region;
     envVars.zone = zone;

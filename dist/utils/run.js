@@ -47,17 +47,15 @@ const run = async (inputs) => {
         const stackName = `${label_postfix}-${service_name}-${env}-${zone}`;
         core.info(`Using stack name: ${stackName}`);
         // Parse env_vars from string to JSON object
-        let envVars;
-        try {
-            core.debug(`Raw env_vars input: ${env_vars}`);
-            envVars = JSON.parse(env_vars.trim());
-            core.info(`Parsed env_vars: ${JSON.stringify(envVars)}`);
-        }
-        catch (error) {
-            core.setFailed(`Failed to parse env_vars JSON: ${error.message}`);
-            return;
-        }
-        // Append additional fields to envVars
+        let envVars = {};
+        // try {
+        //   core.debug(`Raw env_vars input: ${env_vars}`);
+        //   envVars = JSON.parse(env_vars.trim());
+        //   core.info(`Parsed env_vars: ${JSON.stringify(envVars)}`);
+        // } catch (error) {
+        //   core.setFailed(`Failed to parse env_vars JSON: ${(error as Error).message}`);
+        //   return;
+        // }
         envVars.env = env;
         envVars.region = region;
         envVars.zone = zone;
