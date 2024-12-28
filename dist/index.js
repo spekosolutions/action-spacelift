@@ -126,7 +126,10 @@ const main = async () => {
         const binaryFolder = await (0, spacectl_1.installAndGetFolder)();
         core.addPath(binaryFolder);
         core.info("Added spacectl to PATH: " + binaryFolder);
-        const envVars = JSON.parse(core.getInput('env_vars', { required: false }));
+        const rawEnvVars = core.getInput('env_vars', { required: false });
+        console.log('Raw env_vars:', rawEnvVars);
+        // Parse the JSON
+        const envVars = JSON.parse(rawEnvVars);
         console.log('Parsed env_vars:', envVars);
         await (0, run_1.run)({
             command: core.getInput('command', { required: true }),
