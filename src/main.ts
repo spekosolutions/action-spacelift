@@ -8,6 +8,9 @@ const main = async (): Promise<void> => {
     const binaryFolder = await installAndGetFolder();
     core.addPath(binaryFolder);
     core.info("Added spacectl to PATH: " + binaryFolder);
+    let env_vars = core.getInput('env_vars');
+    console.log('env_vars:', env_vars);
+    console.log('Type of env_vars:', typeof env_vars);
 
     await run({
       command: core.getInput('command', { required: true }),

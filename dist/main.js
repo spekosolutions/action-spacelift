@@ -33,6 +33,9 @@ const main = async () => {
         const binaryFolder = await (0, spacectl_1.installAndGetFolder)();
         core.addPath(binaryFolder);
         core.info("Added spacectl to PATH: " + binaryFolder);
+        let env_vars = core.getInput('env_vars');
+        console.log('env_vars:', env_vars);
+        console.log('Type of env_vars:', typeof env_vars);
         await (0, run_1.run)({
             command: core.getInput('command', { required: true }),
             region: core.getInput('region', { required: true }),

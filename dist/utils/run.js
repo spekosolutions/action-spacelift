@@ -58,6 +58,7 @@ const run = async (inputs) => {
         // }
         envVars.env = env;
         envVars.region = region;
+        envVars.provider_region = region;
         envVars.zone = zone;
         core.info(`Updated env_vars: ${JSON.stringify(envVars)}`);
         if (!command) {
