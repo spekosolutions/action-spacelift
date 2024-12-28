@@ -9,7 +9,11 @@ const main = async (): Promise<void> => {
     core.addPath(binaryFolder);
     core.info("Added spacectl to PATH: " + binaryFolder);
     
-    const envVars = JSON.parse(core.getInput('env_vars', { required: false }));
+    const rawEnvVars = core.getInput('env_vars', { required: false });
+    console.log('Raw env_vars:', rawEnvVars);
+
+    // Parse the JSON
+    const envVars = JSON.parse(rawEnvVars);
     console.log('Parsed env_vars:', envVars);
 
     await run({
