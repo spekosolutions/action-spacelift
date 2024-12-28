@@ -126,11 +126,6 @@ const main = async () => {
         const binaryFolder = await (0, spacectl_1.installAndGetFolder)();
         core.addPath(binaryFolder);
         core.info("Added spacectl to PATH: " + binaryFolder);
-        const rawEnvVars = core.getInput('env_vars', { required: false });
-        console.log('Raw env_vars:', rawEnvVars);
-        // Parse the JSON
-        const envVars = JSON.parse(rawEnvVars);
-        console.log('Parsed env_vars:', envVars);
         await (0, run_1.run)({
             command: core.getInput('command', { required: true }),
             region: core.getInput('region', { required: true }),
@@ -140,7 +135,7 @@ const main = async () => {
             service_name: core.getInput('service_name', { required: true }),
             label_prefix: core.getInput('label_prefix', { required: true }),
             label_postfix: core.getInput('label_postfix', { required: true }),
-            env_vars: envVars,
+            rawEnvVars: core.getInput('env_vars', { required: false }),
         });
     }
     catch (e) {
@@ -1117,25 +1112,33 @@ const graphqlStackManager = new stackManager_1.default();
 const run = async (inputs) => {
     try {
         // Destructure the necessary fields from inputs
-        const { command, label_postfix, service_name, env, integration_name, zone, region, env_vars } = inputs;
+        const { command, label_postfix, service_name, env, integration_name, zone, region, rawEnvVars } = inputs;
         const githubSha = process.env.GITHUB_SHA;
         // Construct stack name from inputs
         const stackName = `${label_postfix}-${service_name}-${env}-${zone}`;
         core.info(`Using stack name: ${stackName}`);
-        // Parse env_vars from string to JSON object
+        // Initialize envVars as a Record
         let envVars = {};
-        // try {
-        //   core.debug(`Raw env_vars input: ${env_vars}`);
-        //   envVars = JSON.parse(env_vars.trim());
-        //   core.info(`Parsed env_vars: ${JSON.stringify(envVars)}`);
-        // } catch (error) {
-        //   core.setFailed(`Failed to parse env_vars JSON: ${(error as Error).message}`);
-        //   return;
-        // }
-        envVars.env = env;
-        envVars.region = region;
-        envVars.provider_region = region;
-        envVars.zone = zone;
+        // Parse rawEnvVars and merge with existing values in envVars
+        try {
+            const parsedRawEnvVars = JSON.parse(rawEnvVars.trim());
+            console.log('Parsed raw env_vars:', parsedRawEnvVars);
+            // Merge parsed rawEnvVars into envVars
+            envVars = {
+                ...parsedRawEnvVars, // Spread existing items from parsed rawEnvVars
+                env, // Add specific variables
+                region,
+                provider_region: region,
+                zone,
+            };
+            console.log('Updated envVars:', envVars);
+        }
+        catch (error) {
+            core.setFailed(`Failed to parse env_vars JSON: ${error.message}`);
+            return;
+        }
+        // Use envVars as needed
+        console.log('Parsed env_vars:', envVars);
         core.info(`Updated env_vars: ${JSON.stringify(envVars)}`);
         if (!command) {
             core.info(`Stack command is empty or not set for: ${stackName}`);

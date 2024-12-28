@@ -13,7 +13,7 @@ type Inputs = {
   service_name: string
   label_prefix: string
   label_postfix: string
-  env_vars: string
+  rawEnvVars: string
 }
 
 // Helper to generate a unique tag for the stack
@@ -27,29 +27,40 @@ const graphqlStackManager = new GraphQLStackManager();
 export const run = async (inputs: Inputs): Promise<void> => {
   try {
     // Destructure the necessary fields from inputs
-    const { command, label_postfix, service_name, env, integration_name, zone, region, env_vars } = inputs;
+    const { command, label_postfix, service_name, env, integration_name, zone, region, rawEnvVars } = inputs;
     const githubSha = process.env.GITHUB_SHA;
 
     // Construct stack name from inputs
     const stackName = `${label_postfix}-${service_name}-${env}-${zone}`;
     core.info(`Using stack name: ${stackName}`);
 
-    // Parse env_vars from string to JSON object
+    // Initialize envVars as a Record
     let envVars: Record<string, any> = {};
 
-    // try {
-    //   core.debug(`Raw env_vars input: ${env_vars}`);
-    //   envVars = JSON.parse(env_vars.trim());
-    //   core.info(`Parsed env_vars: ${JSON.stringify(envVars)}`);
-    // } catch (error) {
-    //   core.setFailed(`Failed to parse env_vars JSON: ${(error as Error).message}`);
-    //   return;
-    // }
+    // Parse rawEnvVars and merge with existing values in envVars
+    try {
+      const parsedRawEnvVars = JSON.parse(rawEnvVars.trim());
+      console.log('Parsed raw env_vars:', parsedRawEnvVars);
 
-    envVars.env = env;
-    envVars.region = region;
-    envVars.provider_region = region;
-    envVars.zone = zone;
+      // Merge parsed rawEnvVars into envVars
+      envVars = {
+        ...parsedRawEnvVars, // Spread existing items from parsed rawEnvVars
+        env,                // Add specific variables
+        region,
+        provider_region: region,
+        zone,
+      };
+
+      console.log('Updated envVars:', envVars);
+    } catch (error) {
+      core.setFailed(`Failed to parse env_vars JSON: ${(error as Error).message}`);
+      return;
+    }
+
+    // Use envVars as needed
+
+
+    console.log('Parsed env_vars:', envVars);
 
     core.info(`Updated env_vars: ${JSON.stringify(envVars)}`);
 

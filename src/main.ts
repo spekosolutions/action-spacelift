@@ -9,12 +9,6 @@ const main = async (): Promise<void> => {
     core.addPath(binaryFolder);
     core.info("Added spacectl to PATH: " + binaryFolder);
     
-    const rawEnvVars = core.getInput('env_vars', { required: false });
-    console.log('Raw env_vars:', rawEnvVars);
-
-    // Parse the JSON
-    const envVars = JSON.parse(rawEnvVars);
-    console.log('Parsed env_vars:', envVars);
 
     await run({
       command: core.getInput('command', { required: true }),
@@ -25,7 +19,7 @@ const main = async (): Promise<void> => {
       service_name: core.getInput('service_name', { required: true }),
       label_prefix: core.getInput('label_prefix', { required: true }),
       label_postfix: core.getInput('label_postfix', { required: true }),
-      env_vars: envVars,
+      rawEnvVars: core.getInput('env_vars', { required: false }),
     });
   } catch (e) {
     core.setFailed((e as Error).message);
