@@ -27,7 +27,7 @@ class ContextManager extends GraphQLManager {
           id: `TF_VAR_${key}`,
           type: 'ENVIRONMENT_VARIABLE',
           value: value,
-          writeOnly: true,
+          writeOnly: false,
           description: '',
           fileMode: '0644',
         })
