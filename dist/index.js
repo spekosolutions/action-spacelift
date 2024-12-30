@@ -199,7 +199,6 @@ class AuthorizationManager {
         this.spaceliftApiKeyEndpoint = process.env.SPACELIFT_API_KEY_ENDPOINT || '';
         this.apiKeyId = process.env.SPACELIFT_KEY_ID || '';
     }
-    // Generates an OIDC token and saves it along with its expiration time
     async generateOidcToken() {
         try {
             core.info('Generating OIDC token...');
@@ -207,59 +206,90 @@ class AuthorizationManager {
                 headers: { Authorization: `Bearer ${this.actionsIdTokenRequestToken}` }
             });
             this.oidcToken = response.data.value;
-            const expiry = response.data.expiration || 3600; // Default to 1 hour if not provided
+            const expiry = response.data.expiration || 3600;
             this.oidcTokenExpiration = Date.now() + expiry * 1000;
+            core.info(`OIDC token generated. Expiration time: ${new Date(this.oidcTokenExpiration).toISOString()}`);
         }
         catch (error) {
-            core.setFailed(`Failed to generate OIDC token: ${error}`);
-            throw error;
+            const errorMessage = this.getErrorMessage(error);
+            core.setFailed(`Failed to generate OIDC token: ${errorMessage}`);
+            throw new Error(errorMessage);
         }
     }
-    // Ensures the OIDC token is valid, generates a new one if expired
     async ensureValidOidcToken() {
         if (!this.oidcToken || (this.oidcTokenExpiration && Date.now() >= this.oidcTokenExpiration)) {
             await this.generateOidcToken();
         }
     }
-    // Exchanges the OIDC token for a Bearer token and saves it along with its expiration time
     async generateBearerToken() {
         await this.ensureValidOidcToken();
         try {
             core.info('Exchanging OIDC token for bearer token...');
             const query = {
-                query: `mutation { apiKeyUser(id: "${this.apiKeyId}", secret: "${this.oidcToken}") { jwt }}`
+                query: `mutation { apiKeyUser(id: "${this.apiKeyId}", secret: "${this.oidcToken}") { jwt expiration }}`
             };
             const response = await axios_1.default.post(`https://${this.spaceliftApiKeyEndpoint}/graphql`, query, {
                 headers: { 'Content-Type': 'application/json' }
             });
             this.bearerToken = response.data.data.apiKeyUser.jwt;
-            // Assuming the Bearer token expiration is typically one hour (3600 seconds)
-            this.bearerTokenExpiration = Date.now() + 3600 * 1000;
+            const expiry = response.data.data.apiKeyUser.expiration || 3600;
+            this.bearerTokenExpiration = Date.now() + expiry * 1000;
+            core.info(`Bearer token generated. Expiration time: ${new Date(this.bearerTokenExpiration).toISOString()}`);
         }
         catch (error) {
-            core.setFailed(`Failed to exchange OIDC token for bearer token: ${error}`);
-            throw error;
+            const errorMessage = this.getErrorMessage(error);
+            core.setFailed(`Failed to exchange OIDC token for bearer token: ${errorMessage}`);
+            throw new Error(errorMessage);
         }
     }
-    // Ensures the Bearer token is valid, generates a new one if expired
     async ensureValidBearerToken() {
         if (!this.bearerToken || (this.bearerTokenExpiration && Date.now() >= this.bearerTokenExpiration)) {
             await this.generateBearerToken();
         }
     }
-    // Getter for OIDC token that ensures the token is valid
     get oidcTokenAsync() {
         return (async () => {
             await this.ensureValidOidcToken();
             return this.oidcToken;
         })();
     }
-    // Getter for Bearer token that ensures the token is valid
     get bearerTokenAsync() {
         return (async () => {
             await this.ensureValidBearerToken();
             return this.bearerToken;
         })();
+    }
+    async executeCommandWithRetry(command, retries = 3) {
+        while (retries > 0) {
+            try {
+                await this.ensureValidBearerToken();
+                core.info(`Executing command: ${command}`);
+                // Example execution: await exec(command);
+                core.info('Command executed successfully.');
+                break;
+            }
+            catch (error) {
+                retries--;
+                const errorMessage = this.getErrorMessage(error);
+                core.warning(`Command failed. Retries left: ${retries}. Error: ${errorMessage}`);
+                if (retries === 0) {
+                    core.setFailed(`Command failed after 3 attempts: ${errorMessage}`);
+                    throw new Error(errorMessage);
+                }
+            }
+        }
+    }
+    getErrorMessage(error) {
+        if (axios_1.default.isAxiosError(error)) {
+            // Axios-specific error
+            return error.response?.data?.message || error.message || 'Unknown Axios error';
+        }
+        if (error instanceof Error) {
+            // Generic JavaScript Error
+            return error.message;
+        }
+        // Handle unknown types
+        return typeof error === 'string' ? error : 'An unknown error occurred';
     }
 }
 exports.AuthorizationManager = AuthorizationManager;
