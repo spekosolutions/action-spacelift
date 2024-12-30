@@ -207,8 +207,8 @@ class AuthorizationManager {
                 headers: { Authorization: `Bearer ${this.actionsIdTokenRequestToken}` }
             });
             this.oidcToken = response.data.value;
-            // Assuming the OIDC token expiration is typically one hour (3600 seconds)
-            this.oidcTokenExpiration = Date.now() + 3600 * 1000;
+            const expiry = response.data.expiration || 3600; // Default to 1 hour if not provided
+            this.oidcTokenExpiration = Date.now() + expiry * 1000;
         }
         catch (error) {
             core.setFailed(`Failed to generate OIDC token: ${error}`);
@@ -227,17 +227,21 @@ class AuthorizationManager {
         try {
             core.info('Exchanging OIDC token for bearer token...');
             const query = {
-                query: `mutation { apiKeyUser(id: "${this.apiKeyId}", secret: "${this.oidcToken}") { jwt }}`
+                query: `mutation { apiKeyUser(id: "${this.apiKeyId}", secret: "${this.oidcToken}") { jwt expiration } }`
             };
             const response = await axios_1.default.post(`https://${this.spaceliftApiKeyEndpoint}/graphql`, query, {
                 headers: { 'Content-Type': 'application/json' }
             });
             this.bearerToken = response.data.data.apiKeyUser.jwt;
-            // Assuming the Bearer token expiration is typically one hour (3600 seconds)
-            this.bearerTokenExpiration = Date.now() + 3600 * 1000;
+            const expiration = response.data.data.apiKeyUser.expiration || 3600; // Default to 1 hour if not provided
+            this.bearerTokenExpiration = Date.now() + expiration * 1000;
+            core.info(`Bearer token expiration set to ${new Date(this.bearerTokenExpiration).toISOString()}`);
         }
         catch (error) {
-            core.setFailed(`Failed to exchange OIDC token for bearer token: ${error}`);
+            const errorMessage = axios_1.default.isAxiosError(error) && error.response?.data && typeof error.response.data === 'object' && 'errors' in error.response.data
+                ? JSON.stringify(error.response.data.errors)
+                : error.message;
+            core.setFailed(`Failed to exchange OIDC token for bearer token: ${errorMessage}`);
             throw error;
         }
     }
