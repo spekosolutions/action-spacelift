@@ -64,24 +64,45 @@ class AuthorizationManager {
     }
     async generateBearerToken() {
         await this.ensureValidOidcToken();
-        try {
-            core.info('Exchanging OIDC token for bearer token...');
-            const query = {
-                query: `mutation { apiKeyUser(id: "${this.apiKeyId}", secret: "${this.oidcToken}") { jwt expiration }}`
-            };
-            const response = await axios_1.default.post(`https://${this.spaceliftApiKeyEndpoint}/graphql`, query, {
-                headers: { 'Content-Type': 'application/json' }
-            });
-            this.bearerToken = response.data.data.apiKeyUser.jwt;
-            const expiry = response.data.data.apiKeyUser.expiration || 3600;
-            this.bearerTokenExpiration = Date.now() + expiry * 1000;
-            core.info(`Bearer token generated. Expiration time: ${new Date(this.bearerTokenExpiration).toISOString()}`);
-        }
-        catch (error) {
-            const errorMessage = this.getErrorMessage(error);
-            core.setFailed(`Failed to exchange OIDC token for bearer token: ${errorMessage}`);
-            throw new Error(errorMessage);
-        }
+        const retryOperation = async (attempt) => {
+            try {
+                core.info(`Exchanging OIDC token for bearer token (Attempt ${attempt})...`);
+                const query = {
+                    query: `
+                        mutation {
+                            apiKeyUser(id: "${this.apiKeyId}", secret: "${this.oidcToken}") {
+                                jwt
+                                validUntil
+                            }
+                        }
+                    `
+                };
+                const response = await axios_1.default.post(`https://${this.spaceliftApiKeyEndpoint}/graphql`, query, {
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                core.info(`GraphQL Response: ${JSON.stringify(response.data)}`);
+                const user = response.data?.data?.apiKeyUser;
+                if (!user?.jwt) {
+                    throw new Error('JWT token not found in response');
+                }
+                this.bearerToken = user.jwt;
+                const validUntil = user.validUntil || Math.floor(Date.now() / 1000) + 3600;
+                this.bearerTokenExpiration = validUntil * 1000;
+                core.info(`Bearer token generated. Expiration time: ${new Date(this.bearerTokenExpiration).toISOString()}`);
+            }
+            catch (error) {
+                const errorMessage = this.getErrorMessage(error);
+                if (attempt < 3) {
+                    core.warning(`Attempt ${attempt} failed: ${errorMessage}. Retrying...`);
+                    await retryOperation(attempt + 1);
+                }
+                else {
+                    core.setFailed(`Failed to exchange OIDC token for bearer token after 3 attempts: ${errorMessage}`);
+                    throw new Error(errorMessage);
+                }
+            }
+        };
+        await retryOperation(1);
     }
     async ensureValidBearerToken() {
         if (!this.bearerToken || (this.bearerTokenExpiration && Date.now() >= this.bearerTokenExpiration)) {
