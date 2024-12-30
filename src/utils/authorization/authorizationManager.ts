@@ -51,25 +51,20 @@ export class AuthorizationManager {
         try {
             core.info('Exchanging OIDC token for bearer token...');
             const query = {
-                query: `mutation { apiKeyUser(id: "${this.apiKeyId}", secret: "${this.oidcToken}") { jwt expiration } }`
+                query: `mutation { apiKeyUser(id: "${this.apiKeyId}", secret: "${this.oidcToken}") { jwt }}`
             };
             const response = await axios.post(`https://${this.spaceliftApiKeyEndpoint}/graphql`, query, {
                 headers: { 'Content-Type': 'application/json' }
             });
-    
+
             this.bearerToken = response.data.data.apiKeyUser.jwt;
-            const expiration = response.data.data.apiKeyUser.expiration || 3600; // Default to 1 hour if not provided
-            this.bearerTokenExpiration = Date.now() + expiration * 1000;
-    
-            core.info(`Bearer token expiration set to ${new Date(this.bearerTokenExpiration).toISOString()}`);
+            // Assuming the Bearer token expiration is typically one hour (3600 seconds)
+            this.bearerTokenExpiration = Date.now() + 3600 * 1000;
         } catch (error) {
-            const errorMessage = axios.isAxiosError(error) && error.response?.data && typeof error.response.data === 'object' && 'errors' in error.response.data
-                ? JSON.stringify((error.response.data as { errors: unknown }).errors)
-                : (error as Error).message;
-            core.setFailed(`Failed to exchange OIDC token for bearer token: ${errorMessage}`);
+            core.setFailed(`Failed to exchange OIDC token for bearer token: ${error}`);
             throw error;
         }
-    }    
+    }
 
     // Ensures the Bearer token is valid, generates a new one if expired
     protected async ensureValidBearerToken(): Promise<void> {
