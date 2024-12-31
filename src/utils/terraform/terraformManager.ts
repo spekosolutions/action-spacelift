@@ -10,7 +10,7 @@ class TerraformManager {
 
   constructor() {
     this.authorizationManager = new AuthorizationManager(); // Initialize the AuthorizationManager
-    this.setupSpaceliftEnvironment();
+    // this.setupSpaceliftEnvironment();
   }
 
   private async setupSpaceliftEnvironment(): Promise<void> {

@@ -1644,7 +1644,7 @@ class TerraformCliManager extends terraformManager_1.default {
     async runCommand(stackName, command) {
         try {
             core.info(`Running command '${command}' on stack '${stackName}'...`);
-            // await this.setEnvironmentVariables();
+            await this.setEnvironmentVariables();
             // Build the command
             const commandToRun = `cd deployment/service && ${command}`;
             // Execute the command
@@ -1704,7 +1704,7 @@ const os = __importStar(__nccwpck_require__(2037));
 class TerraformManager {
     constructor() {
         this.authorizationManager = new authorizationManager_1.default(); // Initialize the AuthorizationManager
-        this.setupSpaceliftEnvironment();
+        // this.setupSpaceliftEnvironment();
     }
     async setupSpaceliftEnvironment() {
         try {
