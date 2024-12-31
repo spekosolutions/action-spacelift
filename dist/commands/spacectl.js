@@ -26,7 +26,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.installAndGetFolder = installAndGetFolder;
+exports.installSpaceliftAndGetFolder = installSpaceliftAndGetFolder;
 const core = __importStar(require("@actions/core"));
 const tc = __importStar(require("@actions/tool-cache"));
 const github = __importStar(require("@actions/github"));
@@ -34,7 +34,7 @@ const os_1 = __importDefault(require("os"));
 const path_1 = __importDefault(require("path"));
 const octokit = github.getOctokit(core.getInput("github-token"));
 const downloadURL = "https://github.com/spacelift-io/spacectl/releases/download";
-async function installAndGetFolder() {
+async function installSpaceliftAndGetFolder() {
     const version = await getVersion();
     const arch = getArchitecture();
     core.setOutput("version", version);

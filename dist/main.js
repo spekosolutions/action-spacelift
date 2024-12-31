@@ -27,12 +27,16 @@ exports.main = void 0;
 const core = __importStar(require("@actions/core"));
 const run_1 = require("./utils/run");
 const spacectl_1 = require("./commands/spacectl");
+const terraform_1 = require("./commands/terraform");
 // Define the main function correctly
 const main = async () => {
     try {
-        const binaryFolder = await (0, spacectl_1.installAndGetFolder)();
-        core.addPath(binaryFolder);
-        core.info("Added spacectl to PATH: " + binaryFolder);
+        const binarySpaceliftFolder = await (0, spacectl_1.installSpaceliftAndGetFolder)();
+        const binaryTerraformFolder = await (0, terraform_1.installTerraformAndGetFolder)();
+        core.addPath(binarySpaceliftFolder);
+        core.info("Added spacectl to PATH: " + binarySpaceliftFolder);
+        core.addPath(binaryTerraformFolder);
+        core.info("Added terraform to PATH: " + binaryTerraformFolder);
         await (0, run_1.run)({
             command: core.getInput('command', { required: true }),
             region: core.getInput('region', { required: true }),

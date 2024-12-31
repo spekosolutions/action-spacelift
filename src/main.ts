@@ -1,13 +1,19 @@
 import * as core from '@actions/core';
 import { run } from './utils/run';
-import { installAndGetFolder } from './commands/spacectl';
+import { installSpaceliftAndGetFolder } from './commands/spacectl';
+import { installTerraformAndGetFolder } from './commands/terraform';
 
 // Define the main function correctly
 const main = async (): Promise<void> => {
   try {
-    const binaryFolder = await installAndGetFolder();
-    core.addPath(binaryFolder);
-    core.info("Added spacectl to PATH: " + binaryFolder);
+    const binarySpaceliftFolder = await installSpaceliftAndGetFolder();
+    const binaryTerraformFolder = await installTerraformAndGetFolder();
+
+    core.addPath(binarySpaceliftFolder);
+    core.info("Added spacectl to PATH: " + binarySpaceliftFolder);
+
+    core.addPath(binaryTerraformFolder);
+    core.info("Added terraform to PATH: " + binaryTerraformFolder);
     
 
     await run({

@@ -33,7 +33,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.installAndGetFolder = installAndGetFolder;
+exports.installSpaceliftAndGetFolder = installSpaceliftAndGetFolder;
 const core = __importStar(__nccwpck_require__(9093));
 const tc = __importStar(__nccwpck_require__(5561));
 const github = __importStar(__nccwpck_require__(5207));
@@ -41,7 +41,7 @@ const os_1 = __importDefault(__nccwpck_require__(2037));
 const path_1 = __importDefault(__nccwpck_require__(1017));
 const octokit = github.getOctokit(core.getInput("github-token"));
 const downloadURL = "https://github.com/spacelift-io/spacectl/releases/download";
-async function installAndGetFolder() {
+async function installSpaceliftAndGetFolder() {
     const version = await getVersion();
     const arch = getArchitecture();
     core.setOutput("version", version);
@@ -87,6 +87,100 @@ function getArchitecture() {
 
 /***/ }),
 
+/***/ 2248:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.installTerraformAndGetFolder = installTerraformAndGetFolder;
+const core = __importStar(__nccwpck_require__(9093));
+const tc = __importStar(__nccwpck_require__(5561));
+const os_1 = __importDefault(__nccwpck_require__(2037));
+const path_1 = __importDefault(__nccwpck_require__(1017));
+const terraformDownloadURL = "https://releases.hashicorp.com/terraform";
+async function installTerraformAndGetFolder() {
+    const version = await getVersion();
+    const arch = getArchitecture();
+    core.setOutput("version", version);
+    const cached = tc.find("terraform", version, arch);
+    if (cached)
+        return cached;
+    const assetURL = await getAssetURL(version, arch);
+    const zipPath = await tc.downloadTool(assetURL);
+    const extractedFolder = await tc.extractZip(zipPath, path_1.default.join(os_1.default.homedir(), "terraform"));
+    const cachedFolder = await tc.cacheDir(extractedFolder, "terraform", version, arch);
+    return cachedFolder;
+}
+async function getAssetURL(version, arch) {
+    const platform = getPlatform();
+    return `${terraformDownloadURL}/${version}/terraform_${version}_${platform}_${arch}.zip`;
+}
+async function getVersion() {
+    let version = core.getInput("version") || "latest";
+    if (version === "latest") {
+        version = await getLatestVersion();
+    }
+    return version;
+}
+async function getLatestVersion() {
+    const metadataURL = `${terraformDownloadURL}/index.json`;
+    const response = await fetch(metadataURL);
+    if (!response.ok)
+        throw new Error(`Failed to fetch Terraform releases metadata: ${response.statusText}`);
+    const metadata = await response.json();
+    const latestVersion = metadata.versions[metadata.latest];
+    if (!latestVersion)
+        throw new Error("No latest version found for Terraform");
+    return latestVersion.version;
+}
+function getPlatform() {
+    switch (os_1.default.platform()) {
+        case "win32": return "windows";
+        case "darwin": return "darwin";
+        case "linux": return "linux";
+        default: throw new Error(`Unsupported platform: ${os_1.default.platform()}`);
+    }
+}
+function getArchitecture() {
+    switch (os_1.default.arch()) {
+        case "x64": return "amd64";
+        case "x32": return "386";
+        case "arm": return "arm";
+        case "arm64": return "arm64";
+        default: throw new Error(`Unsupported architecture: ${os_1.default.arch()}`);
+    }
+}
+
+
+/***/ }),
+
 /***/ 7767:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -120,12 +214,16 @@ exports.main = void 0;
 const core = __importStar(__nccwpck_require__(9093));
 const run_1 = __nccwpck_require__(966);
 const spacectl_1 = __nccwpck_require__(1664);
+const terraform_1 = __nccwpck_require__(2248);
 // Define the main function correctly
 const main = async () => {
     try {
-        const binaryFolder = await (0, spacectl_1.installAndGetFolder)();
-        core.addPath(binaryFolder);
-        core.info("Added spacectl to PATH: " + binaryFolder);
+        const binarySpaceliftFolder = await (0, spacectl_1.installSpaceliftAndGetFolder)();
+        const binaryTerraformFolder = await (0, terraform_1.installTerraformAndGetFolder)();
+        core.addPath(binarySpaceliftFolder);
+        core.info("Added spacectl to PATH: " + binarySpaceliftFolder);
+        core.addPath(binaryTerraformFolder);
+        core.info("Added terraform to PATH: " + binaryTerraformFolder);
         await (0, run_1.run)({
             command: core.getInput('command', { required: true }),
             region: core.getInput('region', { required: true }),
