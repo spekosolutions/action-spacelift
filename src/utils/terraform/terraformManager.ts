@@ -28,8 +28,8 @@ class TerraformManager {
       const spaceliftToken = await this.authorizationManager.oidcTokenAsync;
 
       // Define the path to the credentials file
-      const terraformDir = path.join(os.homedir(), ".terraform.d");
-      const credentialsFile = path.join(terraformDir, "credentials.tfrc.json");
+      const terraformDir = path.join(os.homedir(), '.terraform.d');
+      const credentialsFile = path.join(terraformDir, 'credentials.tfrc.json');
 
       // Ensure the ~/.terraform.d directory exists
       if (!fs.existsSync(terraformDir)) {
@@ -48,6 +48,10 @@ class TerraformManager {
       // Write the credentials file
       fs.writeFileSync(credentialsFile, JSON.stringify(credentialsContent, null, 2));
       core.info(`Spacelift credentials have been written to ${credentialsFile}`);
+
+      // Export TF_CLI_CONFIG_FILE environment variable
+      process.env.TF_CLI_CONFIG_FILE = credentialsFile;
+      core.info(`TF_CLI_CONFIG_FILE has been set to ${credentialsFile}`);
     } catch (error) {
       core.setFailed(`Failed to configure Spacelift credentials: ${(error as Error).message}`);
       throw error;
@@ -66,6 +70,13 @@ class TerraformManager {
         // Read and log the file contents
         const fileContents = fs.readFileSync(credentialsFile, 'utf8');
         core.info(`Contents of ${credentialsFile}:\n${fileContents}`);
+      }
+
+      // Log the exported TF_CLI_CONFIG_FILE variable
+      if (process.env.TF_CLI_CONFIG_FILE) {
+        core.info(`TF_CLI_CONFIG_FILE is set to ${process.env.TF_CLI_CONFIG_FILE}`);
+      } else {
+        core.warning('TF_CLI_CONFIG_FILE is not set.');
       }
     } catch (error) {
       core.setFailed(`Failed to debug Spacelift credentials: ${(error as Error).message}`);
