@@ -1646,7 +1646,7 @@ class TerraformCliManager extends terraformManager_1.default {
             core.info(`Running command '${command}' on stack '${stackName}'...`);
             await this.setEnvironmentVariables();
             // Build the command
-            const commandToRun = `cd deployment/service && ${command} -var spacelift_api_key_id="${process.env.SPACELIFT_KEY_ID}" -var spacelift_api_key_secret="${process.env.SPACELIFT_API_KEY_SECRET}"`;
+            const commandToRun = `cd deployment/service && ${command}`;
             // Execute the command
             const { stdout, stderr } = await execAsync(commandToRun);
             core.info(`Command output:\n${stdout}`);
