@@ -256,6 +256,7 @@ const main = async () => {
             label_prefix: core.getInput('label_prefix', { required: true }),
             label_postfix: core.getInput('label_postfix', { required: true }),
             rawEnvVars: core.getInput('env_vars', { required: false }),
+            spacelift_module_token: core.getInput('spacelift_module_token', { required: true }),
         });
     }
     catch (e) {
@@ -1361,7 +1362,7 @@ const isPreviewCommand = (command) => {
 };
 const run = async (inputs) => {
     try {
-        const { command, label_postfix, service_name, env, integration_name, zone, region, rawEnvVars } = inputs;
+        const { command, label_postfix, service_name, env, integration_name, zone, region, rawEnvVars, spacelift_module_token } = inputs;
         const githubSha = process.env.GITHUB_SHA;
         if (!githubSha) {
             throw new Error('GITHUB_SHA environment variable is not set.');
@@ -1371,7 +1372,7 @@ const run = async (inputs) => {
         const envVars = parseEnvVars(rawEnvVars, inputs);
         core.info(`Parsed env_vars: ${JSON.stringify(envVars)}`);
         const existingStack = await graphqlStackManager.getStackByName(stackName);
-        const terraformCliManager = new cliManager_1.default();
+        const terraformCliManager = new cliManager_1.default(spacelift_module_token);
         await terraformCliManager.runCommand(stackName, "terraform init");
         if (existingStack) {
             await graphqlStackManager.waitForStackRunsToFinish(stackName);
@@ -1620,8 +1621,8 @@ const util_1 = __importDefault(__nccwpck_require__(3837));
 const execAsync = util_1.default.promisify(child_process_1.exec);
 // Child class extending TerraformManager to handle CLI operations
 class TerraformCliManager extends terraformManager_1.default {
-    constructor() {
-        super();
+    constructor(token) {
+        super(token);
     }
     // Set environment variables for Spacelift
     async setEnvironmentVariables() {
@@ -1647,7 +1648,7 @@ class TerraformCliManager extends terraformManager_1.default {
     async runCommand(stackName, command) {
         try {
             core.info(`Running command '${command}' on stack '${stackName}'...`);
-            // await this.setEnvironmentVariables();
+            await this.setEnvironmentVariables();
             // Build the command
             const commandToRun = `cd deployment/service/stack && ${command}`;
             // Execute the command
@@ -1705,9 +1706,10 @@ const path = __importStar(__nccwpck_require__(1017));
 const os = __importStar(__nccwpck_require__(2037));
 // Parent class to manage common Spacelift environment setup
 class TerraformManager {
-    constructor() {
+    constructor(token) {
         this.authorizationManager = new authorizationManager_1.default(); // Initialize the AuthorizationManager
         this.setupSpaceliftEnvironment();
+        this.token = token;
     }
     async setupSpaceliftEnvironment() {
         try {
@@ -1733,7 +1735,7 @@ class TerraformManager {
             const credentialsContent = {
                 credentials: {
                     'spacelift.io': {
-                        token: spaceliftToken,
+                        token: this.token,
                     },
                 },
             };

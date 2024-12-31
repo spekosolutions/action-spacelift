@@ -7,10 +7,12 @@ import * as os from 'os';
 // Parent class to manage common Spacelift environment setup
 class TerraformManager {
   protected authorizationManager: AuthorizationManager;
+  private token: string;
 
-  constructor() {
+  constructor(token: string) {
     this.authorizationManager = new AuthorizationManager(); // Initialize the AuthorizationManager
     this.setupSpaceliftEnvironment();
+    this.token = token;
   }
 
   private async setupSpaceliftEnvironment(): Promise<void> {
@@ -40,7 +42,7 @@ class TerraformManager {
       const credentialsContent = {
         credentials: {
           'spacelift.io': {
-            token: spaceliftToken,
+            token: this.token,
           },
         },
       };

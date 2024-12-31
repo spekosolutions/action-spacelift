@@ -15,6 +15,7 @@ type Inputs = {
   label_prefix: string;
   label_postfix: string;
   rawEnvVars: string;
+  spacelift_module_token: string;
 };
 
 const graphqlStackManager = new GraphQLStackManager();
@@ -124,7 +125,7 @@ const isPreviewCommand = (command: string): boolean => {
 
 export const run = async (inputs: Inputs): Promise<void> => {
   try {
-    const { command, label_postfix, service_name, env, integration_name, zone, region, rawEnvVars } = inputs;
+    const { command, label_postfix, service_name, env, integration_name, zone, region, rawEnvVars, spacelift_module_token} = inputs;
     const githubSha = process.env.GITHUB_SHA;
 
     if (!githubSha) {
@@ -139,7 +140,7 @@ export const run = async (inputs: Inputs): Promise<void> => {
 
     const existingStack = await graphqlStackManager.getStackByName(stackName);
 
-    const terraformCliManager = new TerraformCliManager();
+    const terraformCliManager = new TerraformCliManager(spacelift_module_token);
     await terraformCliManager.runCommand(stackName, "terraform init");
     
     if (existingStack) {

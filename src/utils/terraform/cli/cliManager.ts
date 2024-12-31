@@ -8,8 +8,8 @@ const execAsync = util.promisify(exec);
 
 // Child class extending TerraformManager to handle CLI operations
 class TerraformCliManager extends TerraformManager {
-  constructor() {
-    super();
+  constructor(token: string) {
+    super(token);
   }
 
   // Set environment variables for Spacelift
@@ -41,7 +41,7 @@ class TerraformCliManager extends TerraformManager {
   async runCommand(stackName: string, command: string): Promise<{ stdout: string; stderr: string }> {
     try {
       core.info(`Running command '${command}' on stack '${stackName}'...`);
-      // await this.setEnvironmentVariables();
+      await this.setEnvironmentVariables();
 
       // Build the command
       const commandToRun = `cd deployment/service/stack && ${command}`;

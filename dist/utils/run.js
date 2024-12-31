@@ -116,7 +116,7 @@ const isPreviewCommand = (command) => {
 };
 const run = async (inputs) => {
     try {
-        const { command, label_postfix, service_name, env, integration_name, zone, region, rawEnvVars } = inputs;
+        const { command, label_postfix, service_name, env, integration_name, zone, region, rawEnvVars, spacelift_module_token } = inputs;
         const githubSha = process.env.GITHUB_SHA;
         if (!githubSha) {
             throw new Error('GITHUB_SHA environment variable is not set.');
@@ -126,7 +126,7 @@ const run = async (inputs) => {
         const envVars = parseEnvVars(rawEnvVars, inputs);
         core.info(`Parsed env_vars: ${JSON.stringify(envVars)}`);
         const existingStack = await graphqlStackManager.getStackByName(stackName);
-        const terraformCliManager = new cliManager_1.default();
+        const terraformCliManager = new cliManager_1.default(spacelift_module_token);
         await terraformCliManager.runCommand(stackName, "terraform init");
         if (existingStack) {
             await graphqlStackManager.waitForStackRunsToFinish(stackName);

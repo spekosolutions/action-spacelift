@@ -32,6 +32,7 @@ const main = async (): Promise<void> => {
       label_prefix: core.getInput('label_prefix', { required: true }),
       label_postfix: core.getInput('label_postfix', { required: true }),
       rawEnvVars: core.getInput('env_vars', { required: false }),
+      spacelift_module_token: core.getInput('spacelift_module_token', { required: true }),
     });
   } catch (e) {
     core.setFailed((e as Error).message);
