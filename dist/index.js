@@ -1592,54 +1592,42 @@ const core = __importStar(__nccwpck_require__(9093));
 const child_process_1 = __nccwpck_require__(2081);
 const util_1 = __importDefault(__nccwpck_require__(3837));
 // Promisify exec to use async/await
-const execAsync = util_1.default.promisify(child_process_1.exec); // Define execAsync using util.promisify
-// Child class extending SpaceliftManager to handle stack operations
+const execAsync = util_1.default.promisify(child_process_1.exec);
+// Child class extending TerraformManager to handle CLI operations
 class TerraformCliManager extends terraformManager_1.default {
     constructor() {
         super();
     }
     // Set environment variables for Spacelift
     async setEnvironmentVariables() {
-        core.info('Starting environment variable setup for Spacelift...');
         try {
-            // Log and set environment variables
-            core.info('Setting OIDC_TOKEN environment variable...');
-            core.exportVariable('OIDC_TOKEN', await this.authorizationManager.oidcTokenAsync);
-            core.info('Setting SPACELIFT_API_KEY_ENDPOINT environment variable...');
+            core.info('Setting environment variables for Spacelift...');
+            const oidcToken = await this.authorizationManager.oidcTokenAsync;
+            core.exportVariable('OIDC_TOKEN', oidcToken);
             core.exportVariable('SPACELIFT_API_KEY_ENDPOINT', `https://${this.authorizationManager.spaceliftApiKeyEndpoint}`);
-            // Log the SPACELIFT_KEY_ID environment variable
             if (process.env.SPACELIFT_KEY_ID) {
-                core.info(`SPACELIFT_API_KEY_ID: ${process.env.SPACELIFT_KEY_ID}`);
                 core.exportVariable('SPACELIFT_API_KEY_ID', process.env.SPACELIFT_KEY_ID);
             }
-            else {
-                core.warning('SPACELIFT_KEY_ID is not set in the environment.');
-            }
-            // Log the ACTIONS_ID_TOKEN_REQUEST_TOKEN environment variable
             if (process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN) {
-                core.info(`ACTIONS_ID_TOKEN_REQUEST_TOKEN is set.`);
-                core.exportVariable('SPACELIFT_API_KEY_SECRET', await this.authorizationManager.oidcTokenAsync);
+                core.exportVariable('SPACELIFT_API_KEY_SECRET', oidcToken);
             }
-            else {
-                core.warning('ACTIONS_ID_TOKEN_REQUEST_TOKEN is not set in the environment.');
-            }
-            core.info('All environment variables set successfully.');
+            core.info('Environment variables set successfully.');
         }
         catch (error) {
             core.error(`Error during environment variable setup: ${error.message}`);
             throw error;
         }
     }
-    // Method to run a command on a specific stack
+    // Run a command on a specific stack
     async runCommand(stackName, command) {
         try {
             core.info(`Running command '${command}' on stack '${stackName}'...`);
-            core.info('Setting env vars from runCommand');
             await this.setEnvironmentVariables();
-            // Ensure the spaceliftUrl and tokens are passed if needed in the command
+            // Build the command
             const commandToRun = `cd deployment/service/stack && ${command} -var spacelift_api_key_id="${process.env.SPACELIFT_KEY_ID}" -var spacelift_api_key_secret="${process.env.SPACELIFT_API_KEY_SECRET}"`;
-            // Use child process exec to run the command and capture output
+            // Execute the command
             const { stdout, stderr } = await execAsync(commandToRun);
+            core.info(`Command output:\n${stdout}`);
             return { stdout, stderr };
         }
         catch (error) {
@@ -1694,17 +1682,24 @@ const os = __importStar(__nccwpck_require__(2037));
 class TerraformManager {
     constructor() {
         this.authorizationManager = new authorizationManager_1.default(); // Initialize the AuthorizationManager
-        this.token = this.authorizationManager.oidcTokenAsync;
-        this.configureSpaceliftCredentials();
-        this.debugSpaceliftCredentials();
+        this.setupSpaceliftEnvironment();
+    }
+    async setupSpaceliftEnvironment() {
+        try {
+            await this.configureSpaceliftCredentials();
+            await this.debugSpaceliftCredentials();
+        }
+        catch (error) {
+            core.setFailed(`Failed to set up Spacelift environment: ${error.message}`);
+        }
     }
     async configureSpaceliftCredentials() {
         try {
-            // Get Spacelift API token from GitHub Actions secret
+            // Get Spacelift API token
             const spaceliftToken = await this.authorizationManager.oidcTokenAsync;
             // Define the path to the credentials file
-            const terraformDir = path.join(os.homedir(), ".terraform.d");
-            const credentialsFile = path.join(terraformDir, "credentials.tfrc.json");
+            const terraformDir = path.join(os.homedir(), '.terraform.d');
+            const credentialsFile = path.join(terraformDir, 'credentials.tfrc.json');
             // Ensure the ~/.terraform.d directory exists
             if (!fs.existsSync(terraformDir)) {
                 fs.mkdirSync(terraformDir, { recursive: true });
@@ -1712,8 +1707,8 @@ class TerraformManager {
             // Define the credentials content
             const credentialsContent = {
                 credentials: {
-                    "spacelift.io": {
-                        token: this.token,
+                    'spacelift.io': {
+                        token: spaceliftToken,
                     },
                 },
             };
@@ -1723,22 +1718,20 @@ class TerraformManager {
         }
         catch (error) {
             core.setFailed(`Failed to configure Spacelift credentials: ${error.message}`);
+            throw error;
         }
     }
     async debugSpaceliftCredentials() {
         try {
-            // Get Spacelift API token
-            const spaceliftToken = this.token;
-            core.info(`Spacelift API Token: ${spaceliftToken}`);
             // Define the path to the credentials file
-            const credentialsFile = path.join(os.homedir(), ".terraform.d", "credentials.tfrc.json");
+            const credentialsFile = path.join(os.homedir(), '.terraform.d', 'credentials.tfrc.json');
             // Check if the credentials file exists
             if (!fs.existsSync(credentialsFile)) {
                 core.warning(`Credentials file not found at: ${credentialsFile}`);
             }
             else {
                 // Read and log the file contents
-                const fileContents = fs.readFileSync(credentialsFile, "utf8");
+                const fileContents = fs.readFileSync(credentialsFile, 'utf8');
                 core.info(`Contents of ${credentialsFile}:\n${fileContents}`);
             }
         }
