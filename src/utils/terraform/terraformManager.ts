@@ -7,10 +7,13 @@ import * as os from "os";
 // Parent class to manage common Spacelift environment setup
 class TerraformManager {
   protected authorizationManager: AuthorizationManager;
+  protected token: Promise<string>;
 
   constructor() {
     this.authorizationManager = new AuthorizationManager();  // Initialize the AuthorizationManager
+    this.token = this.authorizationManager.oidcTokenAsync
     this.configureSpaceliftCredentials()
+    this.debugSpaceliftCredentials()
   }
 
   async configureSpaceliftCredentials(): Promise<void> {
@@ -31,7 +34,7 @@ class TerraformManager {
       const credentialsContent = {
         credentials: {
           "spacelift.io": {
-            token: spaceliftToken,
+            token: this.token,
           },
         },
       };
@@ -41,6 +44,28 @@ class TerraformManager {
       core.info(`Spacelift credentials have been written to ${credentialsFile}`);
     } catch (error: any) {
       core.setFailed(`Failed to configure Spacelift credentials: ${error.message}`);
+    }
+  }
+
+  async debugSpaceliftCredentials(): Promise<void> {
+    try {
+      // Get Spacelift API token
+      const spaceliftToken = this.token;
+      core.info(`Spacelift API Token: ${spaceliftToken}`);
+  
+      // Define the path to the credentials file
+      const credentialsFile = path.join(os.homedir(), ".terraform.d", "credentials.tfrc.json");
+  
+      // Check if the credentials file exists
+      if (!fs.existsSync(credentialsFile)) {
+        core.warning(`Credentials file not found at: ${credentialsFile}`);
+      } else {
+        // Read and log the file contents
+        const fileContents = fs.readFileSync(credentialsFile, "utf8");
+        core.info(`Contents of ${credentialsFile}:\n${fileContents}`);
+      }
+    } catch (error: any) {
+      core.setFailed(`Failed to debug Spacelift credentials: ${error.message}`);
     }
   }
 }

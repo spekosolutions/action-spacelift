@@ -1694,7 +1694,9 @@ const os = __importStar(__nccwpck_require__(2037));
 class TerraformManager {
     constructor() {
         this.authorizationManager = new authorizationManager_1.default(); // Initialize the AuthorizationManager
+        this.token = this.authorizationManager.oidcTokenAsync;
         this.configureSpaceliftCredentials();
+        this.debugSpaceliftCredentials();
     }
     async configureSpaceliftCredentials() {
         try {
@@ -1711,7 +1713,7 @@ class TerraformManager {
             const credentialsContent = {
                 credentials: {
                     "spacelift.io": {
-                        token: spaceliftToken,
+                        token: this.token,
                     },
                 },
             };
@@ -1721,6 +1723,27 @@ class TerraformManager {
         }
         catch (error) {
             core.setFailed(`Failed to configure Spacelift credentials: ${error.message}`);
+        }
+    }
+    async debugSpaceliftCredentials() {
+        try {
+            // Get Spacelift API token
+            const spaceliftToken = this.token;
+            core.info(`Spacelift API Token: ${spaceliftToken}`);
+            // Define the path to the credentials file
+            const credentialsFile = path.join(os.homedir(), ".terraform.d", "credentials.tfrc.json");
+            // Check if the credentials file exists
+            if (!fs.existsSync(credentialsFile)) {
+                core.warning(`Credentials file not found at: ${credentialsFile}`);
+            }
+            else {
+                // Read and log the file contents
+                const fileContents = fs.readFileSync(credentialsFile, "utf8");
+                core.info(`Contents of ${credentialsFile}:\n${fileContents}`);
+            }
+        }
+        catch (error) {
+            core.setFailed(`Failed to debug Spacelift credentials: ${error.message}`);
         }
     }
 }
