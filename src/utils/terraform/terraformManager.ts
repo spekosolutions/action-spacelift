@@ -1,34 +1,28 @@
 import * as core from '@actions/core';
-import AuthorizationManager from '../authorization/authorizationManager';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 
-// Parent class to manage common Spacelift environment setup
+// Class to manage Spacelift environment setup for Terraform
 class TerraformManager {
-  protected authorizationManager: AuthorizationManager;
   private token: string;
 
   constructor(token: string) {
-    this.authorizationManager = new AuthorizationManager(); // Initialize the AuthorizationManager
-    this.setupSpaceliftEnvironment();
     this.token = token;
+    this.setupSpaceliftEnvironment();
   }
 
-  private async setupSpaceliftEnvironment(): Promise<void> {
+  private setupSpaceliftEnvironment(): void {
     try {
-      await this.configureSpaceliftCredentials();
-      await this.debugSpaceliftCredentials();
+      this.configureSpaceliftCredentials();
+      this.debugSpaceliftCredentials();
     } catch (error) {
       core.setFailed(`Failed to set up Spacelift environment: ${(error as Error).message}`);
     }
   }
 
-  async configureSpaceliftCredentials(): Promise<void> {
+  private configureSpaceliftCredentials(): void {
     try {
-      // Get Spacelift API token
-      const spaceliftToken = await this.authorizationManager.oidcTokenAsync;
-
       // Define the path to the credentials file
       const terraformDir = path.join(os.homedir(), '.terraform.d');
       const credentialsFile = path.join(terraformDir, 'credentials.tfrc.json');
@@ -60,7 +54,7 @@ class TerraformManager {
     }
   }
 
-  async debugSpaceliftCredentials(): Promise<void> {
+  private debugSpaceliftCredentials(): void {
     try {
       // Define the path to the credentials file
       const credentialsFile = path.join(os.homedir(), '.terraform.d', 'credentials.tfrc.json');
