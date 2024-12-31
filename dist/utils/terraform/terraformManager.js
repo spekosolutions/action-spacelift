@@ -51,8 +51,8 @@ class TerraformManager {
             // Get Spacelift API token
             const spaceliftToken = await this.authorizationManager.oidcTokenAsync;
             // Define the path to the credentials file
-            const terraformDir = path.join(os.homedir(), '.terraform.d');
-            const credentialsFile = path.join(terraformDir, 'credentials.tfrc.json');
+            const terraformDir = path.join(os.homedir(), ".terraform.d");
+            const credentialsFile = path.join(terraformDir, "credentials.tfrc.json");
             // Ensure the ~/.terraform.d directory exists
             if (!fs.existsSync(terraformDir)) {
                 fs.mkdirSync(terraformDir, { recursive: true });

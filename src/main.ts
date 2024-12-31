@@ -15,7 +15,6 @@ const main = async (): Promise<void> => {
     core.addPath(binaryTerraformFolder);
     core.info("Added terraform to PATH: " + binaryTerraformFolder);
     
-
     await run({
       command: core.getInput('command', { required: true }),
       region: core.getInput('region', { required: true }),

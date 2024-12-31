@@ -1624,7 +1624,7 @@ class TerraformCliManager extends terraformManager_1.default {
             core.info(`Running command '${command}' on stack '${stackName}'...`);
             await this.setEnvironmentVariables();
             // Build the command
-            const commandToRun = `cd deployment/service/stack && ${command} -var spacelift_api_key_id="${process.env.SPACELIFT_KEY_ID}" -var spacelift_api_key_secret="${process.env.SPACELIFT_API_KEY_SECRET}"`;
+            const commandToRun = `cd deployment/service && ${command} -var spacelift_api_key_id="${process.env.SPACELIFT_KEY_ID}" -var spacelift_api_key_secret="${process.env.SPACELIFT_API_KEY_SECRET}"`;
             // Execute the command
             const { stdout, stderr } = await execAsync(commandToRun);
             core.info(`Command output:\n${stdout}`);
@@ -1698,8 +1698,8 @@ class TerraformManager {
             // Get Spacelift API token
             const spaceliftToken = await this.authorizationManager.oidcTokenAsync;
             // Define the path to the credentials file
-            const terraformDir = path.join(os.homedir(), '.terraform.d');
-            const credentialsFile = path.join(terraformDir, 'credentials.tfrc.json');
+            const terraformDir = path.join(os.homedir(), ".terraform.d");
+            const credentialsFile = path.join(terraformDir, "credentials.tfrc.json");
             // Ensure the ~/.terraform.d directory exists
             if (!fs.existsSync(terraformDir)) {
                 fs.mkdirSync(terraformDir, { recursive: true });
