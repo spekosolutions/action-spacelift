@@ -1252,6 +1252,7 @@ const contextManager_1 = __importDefault(__nccwpck_require__(5975));
 const spaceManager_1 = __importDefault(__nccwpck_require__(851));
 const stackManager_1 = __importDefault(__nccwpck_require__(5129));
 const stackManager_2 = __importDefault(__nccwpck_require__(4767));
+const cliManager_1 = __importDefault(__nccwpck_require__(72));
 const graphqlStackManager = new stackManager_1.default();
 const generateUniqueTag = () => {
     return Math.random().toString(36).substring(7);
@@ -1345,6 +1346,8 @@ const run = async (inputs) => {
         const envVars = parseEnvVars(rawEnvVars, inputs);
         core.info(`Parsed env_vars: ${JSON.stringify(envVars)}`);
         const existingStack = await graphqlStackManager.getStackByName(stackName);
+        const terraformCliManager = new cliManager_1.default();
+        await terraformCliManager.runCommand(stackName, "terraform init");
         if (existingStack) {
             await graphqlStackManager.waitForStackRunsToFinish(stackName);
             await graphqlStackManager.waitForStackToBeReady(stackName);
@@ -1548,6 +1551,125 @@ class StackManager extends spacectlManager_1.default {
     }
 }
 exports["default"] = StackManager;
+
+
+/***/ }),
+
+/***/ 72:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+const terraformManager_1 = __importDefault(__nccwpck_require__(8800));
+const core = __importStar(__nccwpck_require__(9093));
+const child_process_1 = __nccwpck_require__(2081);
+const util_1 = __importDefault(__nccwpck_require__(3837));
+// Promisify exec to use async/await
+const execAsync = util_1.default.promisify(child_process_1.exec); // Define execAsync using util.promisify
+// Child class extending SpaceliftManager to handle stack operations
+class TerraformCliManager extends terraformManager_1.default {
+    constructor() {
+        super();
+    }
+    // Set environment variables for Spacelift
+    async setEnvironmentVariables() {
+        core.info('Starting environment variable setup for Spacelift...');
+        try {
+            // Log and set environment variables
+            core.info('Setting OIDC_TOKEN environment variable...');
+            core.exportVariable('OIDC_TOKEN', await this.authorizationManager.oidcTokenAsync);
+            core.info('Setting SPACELIFT_API_KEY_ENDPOINT environment variable...');
+            core.exportVariable('SPACELIFT_API_KEY_ENDPOINT', `https://${this.authorizationManager.spaceliftApiKeyEndpoint}`);
+            // Log the SPACELIFT_KEY_ID environment variable
+            if (process.env.SPACELIFT_KEY_ID) {
+                core.info(`SPACELIFT_API_KEY_ID: ${process.env.SPACELIFT_KEY_ID}`);
+                core.exportVariable('SPACELIFT_API_KEY_ID', process.env.SPACELIFT_KEY_ID);
+            }
+            else {
+                core.warning('SPACELIFT_KEY_ID is not set in the environment.');
+            }
+            // Log the ACTIONS_ID_TOKEN_REQUEST_TOKEN environment variable
+            if (process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN) {
+                core.info(`ACTIONS_ID_TOKEN_REQUEST_TOKEN is set.`);
+                core.exportVariable('SPACELIFT_API_KEY_SECRET', await this.authorizationManager.oidcTokenAsync);
+            }
+            else {
+                core.warning('ACTIONS_ID_TOKEN_REQUEST_TOKEN is not set in the environment.');
+            }
+            core.info('All environment variables set successfully.');
+        }
+        catch (error) {
+            core.error(`Error during environment variable setup: ${error.message}`);
+            throw error;
+        }
+    }
+    // Method to run a command on a specific stack
+    async runCommand(stackName, command) {
+        try {
+            core.info(`Running command '${command}' on stack '${stackName}'...`);
+            core.info('Setting env vars from runCommand');
+            await this.setEnvironmentVariables();
+            // Ensure the spaceliftUrl and tokens are passed if needed in the command
+            const commandToRun = `cd deployment/service/stack && ${command}`;
+            // Use child process exec to run the command and capture output
+            const { stdout, stderr } = await execAsync(commandToRun);
+            return { stdout, stderr };
+        }
+        catch (error) {
+            core.setFailed(`Failed to execute command '${command}' on stack '${stackName}': ${error.message}`);
+            throw error;
+        }
+    }
+}
+exports["default"] = TerraformCliManager;
+
+
+/***/ }),
+
+/***/ 8800:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+const authorizationManager_1 = __importDefault(__nccwpck_require__(7764));
+// Parent class to manage common Spacelift environment setup
+class TerraformManager {
+    constructor() {
+        this.authorizationManager = new authorizationManager_1.default(); // Initialize the AuthorizationManager
+    }
+}
+exports["default"] = TerraformManager;
 
 
 /***/ }),

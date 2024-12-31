@@ -32,6 +32,7 @@ const contextManager_1 = __importDefault(require("./graphql/contexts/contextMana
 const spaceManager_1 = __importDefault(require("./graphql/spaces/spaceManager"));
 const stackManager_1 = __importDefault(require("./graphql/stacks/stackManager"));
 const stackManager_2 = __importDefault(require("./spacectl/stacks/stackManager"));
+const cliManager_1 = __importDefault(require("./terraform/cli/cliManager"));
 const graphqlStackManager = new stackManager_1.default();
 const generateUniqueTag = () => {
     return Math.random().toString(36).substring(7);
@@ -125,6 +126,8 @@ const run = async (inputs) => {
         const envVars = parseEnvVars(rawEnvVars, inputs);
         core.info(`Parsed env_vars: ${JSON.stringify(envVars)}`);
         const existingStack = await graphqlStackManager.getStackByName(stackName);
+        const terraformCliManager = new cliManager_1.default();
+        await terraformCliManager.runCommand(stackName, "terraform init");
         if (existingStack) {
             await graphqlStackManager.waitForStackRunsToFinish(stackName);
             await graphqlStackManager.waitForStackToBeReady(stackName);

@@ -3,6 +3,7 @@ import ContextManager from './graphql/contexts/contextManager';
 import SpaceManager from './graphql/spaces/spaceManager';
 import GraphQLStackManager from './graphql/stacks/stackManager';
 import SpacectlStackManager from './spacectl/stacks/stackManager';
+import TerraformCliManager from './terraform/cli/cliManager';
 
 type Inputs = {
   command: string;
@@ -138,6 +139,9 @@ export const run = async (inputs: Inputs): Promise<void> => {
 
     const existingStack = await graphqlStackManager.getStackByName(stackName);
 
+    const terraformCliManager = new TerraformCliManager();
+    await terraformCliManager.runCommand(stackName, "terraform init");
+    
     if (existingStack) {
       await graphqlStackManager.waitForStackRunsToFinish(stackName);
       await graphqlStackManager.waitForStackToBeReady(stackName);
