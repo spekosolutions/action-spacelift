@@ -28,15 +28,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.run = void 0;
 const core = __importStar(require("@actions/core"));
-const contextManager_1 = __importDefault(require("./graphql/contexts/contextManager"));
 const spaceManager_1 = __importDefault(require("./graphql/spaces/spaceManager"));
 const stackManager_1 = __importDefault(require("./graphql/stacks/stackManager"));
-const stackManager_2 = __importDefault(require("./spacectl/stacks/stackManager"));
 const cliManager_1 = __importDefault(require("./terraform/cli/cliManager"));
 const graphqlStackManager = new stackManager_1.default();
-const generateUniqueTag = () => {
-    return Math.random().toString(36).substring(7);
-};
+/**
+ * Helper to parse environment variables from raw input
+ */
 const parseEnvVars = (rawEnvVars, inputs) => {
     try {
         const parsedRawEnvVars = JSON.parse(rawEnvVars.trim());
@@ -53,108 +51,91 @@ const parseEnvVars = (rawEnvVars, inputs) => {
         throw error;
     }
 };
+/**
+ * Create or manage spaces
+ */
 const manageSpace = async (inputs) => {
     const spaceManager = new spaceManager_1.default();
     try {
-        return await spaceManager.createServiceSpace(inputs);
+        const parentSpaceId = await spaceManager.createServiceSpace({
+            ...inputs,
+            label_postfix: '', // Exclude postfix for parent space
+        });
+        const spaceId = await spaceManager.createServiceSpace(inputs);
+        return { spaceId, parentSpaceId };
     }
     catch (error) {
         core.error('Error creating service space:');
         throw error;
     }
 };
-const manageContext = async (spaceId, envVars, inputs) => {
-    const contextManager = new contextManager_1.default();
+/**
+ * Create or manage stacks
+ */
+const manageStack = async (stackName, spaceId, inputs) => {
     try {
-        const contextResult = await contextManager.createOrUpdateContext(spaceId, envVars, inputs);
-        core.info(`Context result: ${JSON.stringify(contextResult)}`);
-        return contextResult.contextName;
+        const existingStack = await graphqlStackManager.getStackByName(stackName);
+        if (!existingStack) {
+            core.info(`Stack "${stackName}" does not exist. Creating a new stack...`);
+            await graphqlStackManager.upsertStack(stackName, '', spaceId, inputs.service_name, inputs);
+            core.info(`Stack "${stackName}" created successfully.`);
+        }
+        else {
+            core.info(`Stack "${stackName}" already exists.`);
+        }
     }
     catch (error) {
-        core.error(`Failed to manage context: ${error.message}`);
+        core.error(`Error managing stack: ${error.message}`);
         throw error;
     }
 };
-const manageStack = async (stackName, contextName, spaceId, integration_name, inputs) => {
-    try {
-        await graphqlStackManager.upsertStack(stackName, contextName, spaceId, integration_name, inputs);
-        core.info(`Stack "${stackName}" was successfully upserted.`);
-    }
-    catch (error) {
-        core.error(`Failed to upsert stack: ${error.message}`);
-        throw error;
-    }
+/**
+ * Execute commands on stack
+ */
+const runCommandsOnStack = async (stackName, githubSha, command, spacelift_module_token) => {
+    const terraformCliManager = new cliManager_1.default(spacelift_module_token);
+    core.info(`Running command '${command}' on stack '${stackName}'...`);
+    await terraformCliManager.runCommand(stackName, command);
+    core.info(`Command '${command}' executed successfully on stack '${stackName}'.`);
 };
-const runCommandsOnStack = async (stackName, githubSha, command, existingStack) => {
-    const spacectlStackManager = new stackManager_2.default();
-    if (!existingStack) {
-        const deployCommand = `deploy --sha ${githubSha} --auto-confirm --tail`;
-        await spacectlStackManager.runCommand(stackName, deployCommand);
-        core.info(`First time run...sent command deploy --sha ${githubSha} to "${stackName}".`);
-    }
-    await spacectlStackManager.runCommand(stackName, command);
-    core.info(`Command "${command}" ran successfully on stack "${stackName}".`);
-    const outputs = await spacectlStackManager.getStackOutputs(stackName);
-    core.info(`Stack outputs: ${JSON.stringify(outputs)}`);
-};
-const shouldUpdateStack = (command) => {
-    const nonUpdatingCommands = [
-        'outputs',
-        'resources',
-        'dependencies',
-        'show',
-        'discard',
-        'preview'
-    ];
-    return !nonUpdatingCommands.includes(command);
-};
-const isDeploymentCommand = (command) => {
-    return ['approve', 'deploy'].includes(command);
-};
-const isPreviewCommand = (command) => {
-    return command === 'preview';
-};
+/**
+ * Main action logic
+ */
 const run = async (inputs) => {
     try {
-        const { command, label_postfix, service_name, env, integration_name, zone, region, rawEnvVars, spacelift_module_token } = inputs;
+        const { command, label_postfix, service_name, env, zone, region, rawEnvVars, spacelift_module_token } = inputs;
         const githubSha = process.env.GITHUB_SHA;
         if (!githubSha) {
             throw new Error('GITHUB_SHA environment variable is not set.');
         }
         const stackName = `${label_postfix}-${service_name}-${env}-${zone}`;
         core.info(`Using stack name: ${stackName}`);
+        // Parse environment variables
         const envVars = parseEnvVars(rawEnvVars, inputs);
         core.info(`Parsed env_vars: ${JSON.stringify(envVars)}`);
-        const existingStack = await graphqlStackManager.getStackByName(stackName);
         const terraformCliManager = new cliManager_1.default(spacelift_module_token);
-        await terraformCliManager.runCommand(stackName, "terraform init");
-        if (existingStack) {
-            await graphqlStackManager.waitForStackRunsToFinish(stackName);
-            await graphqlStackManager.waitForStackToBeReady(stackName);
+        // Manage spaces before proceeding with any operations
+        core.info('Creating or managing space...');
+        const { spaceId, parentSpaceId } = await manageSpace(inputs);
+        core.info(`Space created or managed with ID: ${spaceId}, Parent Space ID: ${parentSpaceId}`);
+        // If command is Terraform-related or stack doesn't exist, execute the command
+        const existingStack = await graphqlStackManager.getStackByName(stackName);
+        if (command.startsWith('terraform') || !existingStack) {
+            if (!existingStack) {
+                await manageStack(stackName, spaceId, inputs);
+            }
+            core.info(`Executing Terraform command: ${command}`);
+            await terraformCliManager.runCommand(stackName, `${command} -var='parent_space_id=${parentSpaceId}'`);
+            return;
         }
-        else {
-            core.info(`Stack "${stackName}" does not exist. Proceeding to create a new stack.`);
-        }
-        let spaceId = '';
-        let contextName = '';
-        if (shouldUpdateStack(command)) {
-            spaceId = await manageSpace(inputs);
-            contextName = await manageContext(spaceId, envVars, inputs);
-        }
-        if (!existingStack) {
-            const deployCommand = `deploy --sha ${githubSha} --auto-confirm --tail`;
-            await runCommandsOnStack(stackName, githubSha, deployCommand, existingStack);
-        }
-        if (isDeploymentCommand(command)) {
-            await manageStack(stackName, contextName, spaceId, integration_name, inputs);
-        }
-        if (isPreviewCommand(command) && existingStack) {
-            core.info(`Running preview command for stack: ${stackName}`);
-            await runCommandsOnStack(stackName, githubSha, command, existingStack);
-        }
-        else if (!isPreviewCommand(command)) {
-            await runCommandsOnStack(stackName, githubSha, command, existingStack);
-        }
+        // Manage stack creation if it doesn't exist
+        await manageStack(stackName, spaceId, inputs);
+        // Execute Terraform command after space and stack creation (if needed)
+        core.info('Executing Terraform command...');
+        await terraformCliManager.runCommand(stackName, command);
+        // Run additional commands on stack
+        core.info('Running additional commands on stack...');
+        await runCommandsOnStack(stackName, githubSha, command, spacelift_module_token);
     }
     catch (error) {
         core.setFailed(`Action failed with error: ${error.message || error}`);
