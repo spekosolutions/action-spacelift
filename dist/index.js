@@ -1706,7 +1706,7 @@ const os = __importStar(__nccwpck_require__(2037));
 // Parent class to manage common Spacelift environment setup
 class TerraformManager {
     constructor() {
-        this.authorizationManager = new authorizationManager_1.default("app.spacelift.io"); // Initialize the AuthorizationManager
+        this.authorizationManager = new authorizationManager_1.default(); // Initialize the AuthorizationManager
         this.setupSpaceliftEnvironment();
     }
     async setupSpaceliftEnvironment() {

@@ -9,7 +9,7 @@ class TerraformManager {
   protected authorizationManager: AuthorizationManager;
 
   constructor() {
-    this.authorizationManager = new AuthorizationManager("app.spacelift.io"); // Initialize the AuthorizationManager
+    this.authorizationManager = new AuthorizationManager(); // Initialize the AuthorizationManager
     this.setupSpaceliftEnvironment();
   }
 
