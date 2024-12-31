@@ -10,7 +10,7 @@ class TerraformManager {
 
   constructor() {
     this.authorizationManager = new AuthorizationManager(); // Initialize the AuthorizationManager
-    // this.setupSpaceliftEnvironment();
+    this.setupSpaceliftEnvironment();
   }
 
   private async setupSpaceliftEnvironment(): Promise<void> {
@@ -39,7 +39,7 @@ class TerraformManager {
       // Define the credentials content
       const credentialsContent = {
         credentials: {
-          'spacelift.io': {
+          [this.authorizationManager.spaceliftApiKeyEndpoint]: {
             token: spaceliftToken,
           },
         },
