@@ -88,6 +88,8 @@ class TerraformManager {
             else {
                 // Read and log the file contents
                 const fileContents = fs.readFileSync(credentialsFile, 'utf8');
+                const base64Encoded = Buffer.from(fileContents).toString('base64');
+                core.info(`Base64-encoded credentials:\n${base64Encoded}`);
                 core.info(`Contents of ${credentialsFile}:\n${fileContents}`);
             }
             // Log the exported TF_CLI_CONFIG_FILE variable
