@@ -2,6 +2,7 @@ import * as core from "@actions/core";
 import * as tc from "@actions/tool-cache";
 import os from "os";
 import path from "path";
+import * as fs from "fs";
 
 const terraformDownloadURL = "https://releases.hashicorp.com/terraform";
 
@@ -11,12 +12,29 @@ async function installTerraformAndGetFolder(): Promise<string> {
   core.setOutput("version", version);
 
   const cached = tc.find("terraform", version, arch);
-  if (cached) return cached;
+  if (cached) {
+    core.info(`Terraform found in cache at ${cached}`);
+    return cached;
+  }
 
   const assetURL = await getAssetURL(version, arch);
+  core.info(`Downloading Terraform from ${assetURL}...`);
   const zipPath = await tc.downloadTool(assetURL);
   const extractedFolder = await tc.extractZip(zipPath, path.join(os.homedir(), "terraform"));
+
+  // Cache the extracted folder
   const cachedFolder = await tc.cacheDir(extractedFolder, "terraform", version, arch);
+  core.info(`Terraform cached at ${cachedFolder}`);
+
+  // Validate binary existence
+  const terraformBinary = path.join(cachedFolder, "terraform");
+  if (!fs.existsSync(terraformBinary)) {
+    throw new Error(`Terraform binary not found in ${cachedFolder}`);
+  }
+
+  // Add to PATH
+  core.addPath(cachedFolder);
+  core.info(`Terraform added to PATH from ${cachedFolder}`);
 
   return cachedFolder;
 }

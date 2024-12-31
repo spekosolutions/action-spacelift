@@ -31,18 +31,32 @@ const core = __importStar(require("@actions/core"));
 const tc = __importStar(require("@actions/tool-cache"));
 const os_1 = __importDefault(require("os"));
 const path_1 = __importDefault(require("path"));
+const fs = __importStar(require("fs"));
 const terraformDownloadURL = "https://releases.hashicorp.com/terraform";
 async function installTerraformAndGetFolder() {
     const version = await getVersion();
     const arch = getArchitecture();
     core.setOutput("version", version);
     const cached = tc.find("terraform", version, arch);
-    if (cached)
+    if (cached) {
+        core.info(`Terraform found in cache at ${cached}`);
         return cached;
+    }
     const assetURL = await getAssetURL(version, arch);
+    core.info(`Downloading Terraform from ${assetURL}...`);
     const zipPath = await tc.downloadTool(assetURL);
     const extractedFolder = await tc.extractZip(zipPath, path_1.default.join(os_1.default.homedir(), "terraform"));
+    // Cache the extracted folder
     const cachedFolder = await tc.cacheDir(extractedFolder, "terraform", version, arch);
+    core.info(`Terraform cached at ${cachedFolder}`);
+    // Validate binary existence
+    const terraformBinary = path_1.default.join(cachedFolder, "terraform");
+    if (!fs.existsSync(terraformBinary)) {
+        throw new Error(`Terraform binary not found in ${cachedFolder}`);
+    }
+    // Add to PATH
+    core.addPath(cachedFolder);
+    core.info(`Terraform added to PATH from ${cachedFolder}`);
     return cachedFolder;
 }
 async function getAssetURL(version, arch) {
