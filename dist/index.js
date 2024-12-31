@@ -1624,31 +1624,10 @@ class TerraformCliManager extends terraformManager_1.default {
     constructor(token) {
         super(token);
     }
-    // Set environment variables for Spacelift
-    async setEnvironmentVariables() {
-        try {
-            core.info('Setting environment variables for Spacelift...');
-            const oidcToken = await this.authorizationManager.oidcTokenAsync;
-            core.exportVariable('OIDC_TOKEN', oidcToken);
-            core.exportVariable('SPACELIFT_API_KEY_ENDPOINT', `https://${this.authorizationManager.spaceliftApiKeyEndpoint}`);
-            if (process.env.SPACELIFT_KEY_ID) {
-                core.exportVariable('SPACELIFT_API_KEY_ID', process.env.SPACELIFT_KEY_ID);
-            }
-            if (process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN) {
-                core.exportVariable('SPACELIFT_API_KEY_SECRET', oidcToken);
-            }
-            core.info('Environment variables set successfully.');
-        }
-        catch (error) {
-            core.error(`Error during environment variable setup: ${error.message}`);
-            throw error;
-        }
-    }
     // Run a command on a specific stack
     async runCommand(stackName, command) {
         try {
             core.info(`Running command '${command}' on stack '${stackName}'...`);
-            await this.setEnvironmentVariables();
             // Build the command
             const commandToRun = `cd deployment/service/stack && ${command}`;
             // Execute the command
@@ -1695,35 +1674,28 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(9093));
-const authorizationManager_1 = __importDefault(__nccwpck_require__(7764));
 const fs = __importStar(__nccwpck_require__(7147));
 const path = __importStar(__nccwpck_require__(1017));
 const os = __importStar(__nccwpck_require__(2037));
-// Parent class to manage common Spacelift environment setup
+// Class to manage Spacelift environment setup for Terraform
 class TerraformManager {
     constructor(token) {
-        this.authorizationManager = new authorizationManager_1.default(); // Initialize the AuthorizationManager
-        this.setupSpaceliftEnvironment();
         this.token = token;
+        this.setupSpaceliftEnvironment();
     }
-    async setupSpaceliftEnvironment() {
+    setupSpaceliftEnvironment() {
         try {
-            await this.configureSpaceliftCredentials();
-            await this.debugSpaceliftCredentials();
+            this.configureSpaceliftCredentials();
+            this.debugSpaceliftCredentials();
         }
         catch (error) {
             core.setFailed(`Failed to set up Spacelift environment: ${error.message}`);
         }
     }
-    async configureSpaceliftCredentials() {
+    configureSpaceliftCredentials() {
         try {
-            // Get Spacelift API token
-            const spaceliftToken = await this.authorizationManager.oidcTokenAsync;
             // Define the path to the credentials file
             const terraformDir = path.join(os.homedir(), '.terraform.d');
             const credentialsFile = path.join(terraformDir, 'credentials.tfrc.json');
@@ -1751,7 +1723,7 @@ class TerraformManager {
             throw error;
         }
     }
-    async debugSpaceliftCredentials() {
+    debugSpaceliftCredentials() {
         try {
             // Define the path to the credentials file
             const credentialsFile = path.join(os.homedir(), '.terraform.d', 'credentials.tfrc.json');

@@ -22,35 +22,28 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 const core = __importStar(require("@actions/core"));
-const authorizationManager_1 = __importDefault(require("../authorization/authorizationManager"));
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const os = __importStar(require("os"));
-// Parent class to manage common Spacelift environment setup
+// Class to manage Spacelift environment setup for Terraform
 class TerraformManager {
     constructor(token) {
-        this.authorizationManager = new authorizationManager_1.default(); // Initialize the AuthorizationManager
-        this.setupSpaceliftEnvironment();
         this.token = token;
+        this.setupSpaceliftEnvironment();
     }
-    async setupSpaceliftEnvironment() {
+    setupSpaceliftEnvironment() {
         try {
-            await this.configureSpaceliftCredentials();
-            await this.debugSpaceliftCredentials();
+            this.configureSpaceliftCredentials();
+            this.debugSpaceliftCredentials();
         }
         catch (error) {
             core.setFailed(`Failed to set up Spacelift environment: ${error.message}`);
         }
     }
-    async configureSpaceliftCredentials() {
+    configureSpaceliftCredentials() {
         try {
-            // Get Spacelift API token
-            const spaceliftToken = await this.authorizationManager.oidcTokenAsync;
             // Define the path to the credentials file
             const terraformDir = path.join(os.homedir(), '.terraform.d');
             const credentialsFile = path.join(terraformDir, 'credentials.tfrc.json');
@@ -78,7 +71,7 @@ class TerraformManager {
             throw error;
         }
     }
-    async debugSpaceliftCredentials() {
+    debugSpaceliftCredentials() {
         try {
             // Define the path to the credentials file
             const credentialsFile = path.join(os.homedir(), '.terraform.d', 'credentials.tfrc.json');
