@@ -107,7 +107,8 @@ const shouldUpdateStack = (command: string): boolean => {
     'resources',
     'dependencies',
     'show',
-    'discard'
+    'discard',
+    'preview'
   ];
   return !nonUpdatingCommands.includes(command);
 };
@@ -152,13 +153,13 @@ export const run = async (inputs: Inputs): Promise<void> => {
       contextName = await manageContext(spaceId, envVars, inputs);
     }
 
-    if (isDeploymentCommand(command)) {
-      await manageStack(stackName, contextName, spaceId, integration_name, inputs);
-    }
-
     if (!existingStack) {
       const deployCommand = `deploy --sha ${githubSha} --auto-confirm --tail`;
       await runCommandsOnStack(stackName, githubSha, deployCommand, existingStack);
+    }
+    
+    if (isDeploymentCommand(command)) {
+      await manageStack(stackName, contextName, spaceId, integration_name, inputs);
     }
 
     if (isPreviewCommand(command) && existingStack) {

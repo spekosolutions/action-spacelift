@@ -1224,7 +1224,8 @@ const shouldUpdateStack = (command) => {
         'resources',
         'dependencies',
         'show',
-        'discard'
+        'discard',
+        'preview'
     ];
     return !nonUpdatingCommands.includes(command);
 };
@@ -1259,12 +1260,12 @@ const run = async (inputs) => {
             spaceId = await manageSpace(inputs);
             contextName = await manageContext(spaceId, envVars, inputs);
         }
-        if (isDeploymentCommand(command)) {
-            await manageStack(stackName, contextName, spaceId, integration_name, inputs);
-        }
         if (!existingStack) {
             const deployCommand = `deploy --sha ${githubSha} --auto-confirm --tail`;
             await runCommandsOnStack(stackName, githubSha, deployCommand, existingStack);
+        }
+        if (isDeploymentCommand(command)) {
+            await manageStack(stackName, contextName, spaceId, integration_name, inputs);
         }
         if (isPreviewCommand(command) && existingStack) {
             core.info(`Running preview command for stack: ${stackName}`);
