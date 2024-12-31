@@ -27,7 +27,7 @@ async function getAssetURL(version: string, arch: string): Promise<string> {
 }
 
 async function getVersion(): Promise<string> {
-  let version = core.getInput("version") || "latest";
+  let version = core.getInput("tf_version") || "1.10.3";
   if (version === "latest") {
     version = await getLatestVersion();
   }

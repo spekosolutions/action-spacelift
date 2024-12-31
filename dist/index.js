@@ -143,7 +143,7 @@ async function getAssetURL(version, arch) {
     return `${terraformDownloadURL}/${version}/terraform_${version}_${platform}_${arch}.zip`;
 }
 async function getVersion() {
-    let version = core.getInput("version") || "latest";
+    let version = core.getInput("tf_version") || "1.10.3";
     if (version === "latest") {
         version = await getLatestVersion();
     }
