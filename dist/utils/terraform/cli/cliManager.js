@@ -61,7 +61,7 @@ class TerraformCliManager extends terraformManager_1.default {
     async runCommand(stackName, command) {
         try {
             core.info(`Running command '${command}' on stack '${stackName}'...`);
-            await this.setEnvironmentVariables();
+            // await this.setEnvironmentVariables();
             // Build the command
             const commandToRun = `cd deployment/service && ${command}`;
             // Execute the command
