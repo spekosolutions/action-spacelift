@@ -32,11 +32,19 @@ const terraform_1 = require("./commands/terraform");
 const main = async () => {
     try {
         const binarySpaceliftFolder = await (0, spacectl_1.installSpaceliftAndGetFolder)();
-        const binaryTerraformFolder = await (0, terraform_1.installTerraformAndGetFolder)();
+        (async () => {
+            try {
+                const binaryTerraformFolder = await (0, terraform_1.installTerraformAndGetFolder)();
+                console.log(`Terraform installed at ${binaryTerraformFolder}`);
+                core.addPath(binaryTerraformFolder);
+                core.info("Added terraform to PATH: " + binaryTerraformFolder);
+            }
+            catch (error) {
+                console.error(`Failed to install Terraform: ${error.message}`);
+            }
+        })();
         core.addPath(binarySpaceliftFolder);
         core.info("Added spacectl to PATH: " + binarySpaceliftFolder);
-        core.addPath(binaryTerraformFolder);
-        core.info("Added terraform to PATH: " + binaryTerraformFolder);
         await (0, run_1.run)({
             command: core.getInput('command', { required: true }),
             region: core.getInput('region', { required: true }),
