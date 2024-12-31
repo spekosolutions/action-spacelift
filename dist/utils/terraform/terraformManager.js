@@ -34,7 +34,7 @@ const os = __importStar(require("os"));
 // Parent class to manage common Spacelift environment setup
 class TerraformManager {
     constructor() {
-        this.authorizationManager = new authorizationManager_1.default(); // Initialize the AuthorizationManager
+        this.authorizationManager = new authorizationManager_1.default("app.spacelift.io"); // Initialize the AuthorizationManager
         this.setupSpaceliftEnvironment();
     }
     async setupSpaceliftEnvironment() {
@@ -60,7 +60,7 @@ class TerraformManager {
             // Define the credentials content
             const credentialsContent = {
                 credentials: {
-                    [this.authorizationManager.spaceliftApiKeyEndpoint]: {
+                    'spacelift.io': {
                         token: spaceliftToken,
                     },
                 },

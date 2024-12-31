@@ -9,7 +9,7 @@ class TerraformManager {
   protected authorizationManager: AuthorizationManager;
 
   constructor() {
-    this.authorizationManager = new AuthorizationManager(); // Initialize the AuthorizationManager
+    this.authorizationManager = new AuthorizationManager("app.spacelift.io"); // Initialize the AuthorizationManager
     this.setupSpaceliftEnvironment();
   }
 
@@ -39,7 +39,7 @@ class TerraformManager {
       // Define the credentials content
       const credentialsContent = {
         credentials: {
-          [this.authorizationManager.spaceliftApiKeyEndpoint]: {
+          'spacelift.io': {
             token: spaceliftToken,
           },
         },

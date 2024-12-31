@@ -30,14 +30,17 @@ exports.AuthorizationManager = void 0;
 const axios_1 = __importDefault(require("axios"));
 const core = __importStar(require("@actions/core"));
 class AuthorizationManager {
-    constructor() {
+    constructor(apiKeyEndpoint) {
         this.oidcToken = null;
         this.oidcTokenExpiration = null;
         this.bearerToken = null;
         this.bearerTokenExpiration = null;
         this.actionsIdTokenRequestToken = process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN || '';
         this.actionsIdTokenRequestUrl = process.env.ACTIONS_ID_TOKEN_REQUEST_URL || '';
-        this.spaceliftApiKeyEndpoint = process.env.SPACELIFT_API_KEY_ENDPOINT || '';
+        // Use the apiKeyEndpoint parameter if provided, otherwise fallback to the environment variable
+        this.spaceliftApiKeyEndpoint = apiKeyEndpoint && apiKeyEndpoint.trim() !== ''
+            ? apiKeyEndpoint
+            : process.env.SPACELIFT_API_KEY_ENDPOINT || '';
         this.apiKeyId = process.env.SPACELIFT_KEY_ID || '';
     }
     async generateOidcToken() {

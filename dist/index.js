@@ -309,14 +309,17 @@ exports.AuthorizationManager = void 0;
 const axios_1 = __importDefault(__nccwpck_require__(5449));
 const core = __importStar(__nccwpck_require__(9093));
 class AuthorizationManager {
-    constructor() {
+    constructor(apiKeyEndpoint) {
         this.oidcToken = null;
         this.oidcTokenExpiration = null;
         this.bearerToken = null;
         this.bearerTokenExpiration = null;
         this.actionsIdTokenRequestToken = process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN || '';
         this.actionsIdTokenRequestUrl = process.env.ACTIONS_ID_TOKEN_REQUEST_URL || '';
-        this.spaceliftApiKeyEndpoint = process.env.SPACELIFT_API_KEY_ENDPOINT || '';
+        // Use the apiKeyEndpoint parameter if provided, otherwise fallback to the environment variable
+        this.spaceliftApiKeyEndpoint = apiKeyEndpoint && apiKeyEndpoint.trim() !== ''
+            ? apiKeyEndpoint
+            : process.env.SPACELIFT_API_KEY_ENDPOINT || '';
         this.apiKeyId = process.env.SPACELIFT_KEY_ID || '';
     }
     async generateOidcToken() {
@@ -1703,7 +1706,7 @@ const os = __importStar(__nccwpck_require__(2037));
 // Parent class to manage common Spacelift environment setup
 class TerraformManager {
     constructor() {
-        this.authorizationManager = new authorizationManager_1.default(); // Initialize the AuthorizationManager
+        this.authorizationManager = new authorizationManager_1.default("app.spacelift.io"); // Initialize the AuthorizationManager
         this.setupSpaceliftEnvironment();
     }
     async setupSpaceliftEnvironment() {
@@ -1729,7 +1732,7 @@ class TerraformManager {
             // Define the credentials content
             const credentialsContent = {
                 credentials: {
-                    [this.authorizationManager.spaceliftApiKeyEndpoint]: {
+                    'spacelift.io': {
                         token: spaceliftToken,
                     },
                 },

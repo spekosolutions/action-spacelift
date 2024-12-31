@@ -14,12 +14,17 @@ export class AuthorizationManager {
 
     public spaceliftApiKeyEndpoint: string;
 
-    constructor() {
+    constructor(apiKeyEndpoint?: string) {
         this.actionsIdTokenRequestToken = process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN || '';
         this.actionsIdTokenRequestUrl = process.env.ACTIONS_ID_TOKEN_REQUEST_URL || '';
-        this.spaceliftApiKeyEndpoint = process.env.SPACELIFT_API_KEY_ENDPOINT || '';
+    
+        // Use the apiKeyEndpoint parameter if provided, otherwise fallback to the environment variable
+        this.spaceliftApiKeyEndpoint = apiKeyEndpoint && apiKeyEndpoint.trim() !== ''
+            ? apiKeyEndpoint
+            : process.env.SPACELIFT_API_KEY_ENDPOINT || '';
+    
         this.apiKeyId = process.env.SPACELIFT_KEY_ID || '';
-    }
+    }    
 
     private async generateOidcToken(): Promise<void> {
         try {
