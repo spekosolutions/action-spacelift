@@ -1658,15 +1658,70 @@ exports["default"] = TerraformCliManager;
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
+const core = __importStar(__nccwpck_require__(9093));
 const authorizationManager_1 = __importDefault(__nccwpck_require__(7764));
+const fs = __importStar(__nccwpck_require__(7147));
+const path = __importStar(__nccwpck_require__(1017));
+const os = __importStar(__nccwpck_require__(2037));
 // Parent class to manage common Spacelift environment setup
 class TerraformManager {
     constructor() {
         this.authorizationManager = new authorizationManager_1.default(); // Initialize the AuthorizationManager
+        this.configureSpaceliftCredentials();
+    }
+    async configureSpaceliftCredentials() {
+        try {
+            // Get Spacelift API token from GitHub Actions secret
+            const spaceliftToken = await this.authorizationManager.oidcTokenAsync;
+            // Define the path to the credentials file
+            const terraformDir = path.join(os.homedir(), ".terraform.d");
+            const credentialsFile = path.join(terraformDir, "credentials.tfrc.json");
+            // Ensure the ~/.terraform.d directory exists
+            if (!fs.existsSync(terraformDir)) {
+                fs.mkdirSync(terraformDir, { recursive: true });
+            }
+            // Define the credentials content
+            const credentialsContent = {
+                credentials: {
+                    "spacelift.io": {
+                        token: spaceliftToken,
+                    },
+                },
+            };
+            // Write the credentials file
+            fs.writeFileSync(credentialsFile, JSON.stringify(credentialsContent, null, 2));
+            core.info(`Spacelift credentials have been written to ${credentialsFile}`);
+        }
+        catch (error) {
+            core.setFailed(`Failed to configure Spacelift credentials: ${error.message}`);
+        }
     }
 }
 exports["default"] = TerraformManager;
