@@ -57,7 +57,7 @@ class TerraformCliManager extends TerraformManager {
       await this.setEnvironmentVariables()
 
       // Ensure the spaceliftUrl and tokens are passed if needed in the command
-      const commandToRun = `cd deployment/service/stack && ${command}`
+      const commandToRun = `cd deployment/service/stack && ${command} -var spacelift_api_key_id="${process.env.SPACELIFT_KEY_ID}" -var spacelift_api_key_secret="${process.env.SPACELIFT_API_KEY_SECRET}"`
 
       // Use child process exec to run the command and capture output
       const { stdout, stderr } = await execAsync(commandToRun)
