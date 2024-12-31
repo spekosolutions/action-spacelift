@@ -120,22 +120,18 @@ const run = async (inputs) => {
         core.info(`Space created or managed with ID: ${spaceId}, Parent Space ID: ${parentSpaceId}`);
         // If command is Terraform-related or stack doesn't exist, execute the command
         const existingStack = await graphqlStackManager.getStackByName(stackName);
-        if (command.startsWith('terraform') || !existingStack) {
-            if (!existingStack) {
-                await manageStack(stackName, spaceId, inputs);
-            }
-            core.info(`Executing Terraform command: ${command}`);
-            await terraformCliManager.runCommand(stackName, `${command} -var='parent_space_id=${parentSpaceId}'`);
-            return;
+        if (!existingStack) {
+            await terraformCliManager.runCommand(stackName, `terraform init`);
+            await terraformCliManager.runCommand(stackName, `terraform deploy --auto-approve -var='parent_space_id=${parentSpaceId}'`);
         }
-        // Manage stack creation if it doesn't exist
-        await manageStack(stackName, spaceId, inputs);
-        // Execute Terraform command after space and stack creation (if needed)
-        core.info('Executing Terraform command...');
-        await terraformCliManager.runCommand(stackName, command);
-        // Run additional commands on stack
-        core.info('Running additional commands on stack...');
-        await runCommandsOnStack(stackName, githubSha, command, spacelift_module_token);
+        if (command.startsWith('terraform')) {
+            await terraformCliManager.runCommand(stackName, `${command} -var='parent_space_id=${parentSpaceId}'`);
+        }
+        else { // This must be a sapcelift command right?
+            // Run additional commands on stack
+            core.info('Running additional commands on stack...');
+            await runCommandsOnStack(stackName, githubSha, command, spacelift_module_token);
+        }
     }
     catch (error) {
         core.setFailed(`Action failed with error: ${error.message || error}`);
