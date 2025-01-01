@@ -13,39 +13,42 @@ class TerraformCliManager extends TerraformManager {
     super(token);
   }
 
-  // Run a command on a specific stack
-  async runCommand(stackName: string, command: string): Promise<{ stdout: string; stderr: string }> {
-    core.info(`Executing command: ${command} on stack: ${stackName}`);
-
+  // Run a command with real-time logging
+  async runCommandWithLogs(stackPath: string, command: string): Promise<void> {
     return new Promise((resolve, reject) => {
+      core.info(`Running Terraform command: ${command} in path: ${stackPath}`);
+
       const child = spawn(command, {
         shell: true,
+        cwd: stackPath,
         env: {
           ...process.env,
         },
       });
 
-      // Stream stdout
+      // Capture and log stdout
       child.stdout.on('data', (data: Buffer) => {
-        process.stdout.write(data.toString());
+        core.info(data.toString().trim());
       });
 
-      // Stream stderr
+      // Capture and log stderr
       child.stderr.on('data', (data: Buffer) => {
-        process.stderr.write(data.toString());
+        core.error(data.toString().trim());
       });
 
       // Handle process exit
       child.on('close', (code: number) => {
         if (code === 0) {
-          resolve({ stdout: '', stderr: '' });
+          core.info(`Terraform command '${command}' completed successfully.`);
+          resolve();
         } else {
-          reject(new Error(`Command failed with exit code ${code}`));
+          reject(new Error(`Terraform command '${command}' failed with exit code ${code}.`));
         }
       });
 
       child.on('error', (error: Error) => {
-        reject(new Error(`Failed to execute command: ${error.message}`));
+        core.error(`Error executing Terraform command '${command}': ${error.message}`);
+        reject(error);
       });
     });
   }

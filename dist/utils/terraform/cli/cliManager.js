@@ -38,35 +38,38 @@ class TerraformCliManager extends terraformManager_1.default {
     constructor(token) {
         super(token);
     }
-    // Run a command on a specific stack
-    async runCommand(stackName, command) {
-        core.info(`Executing command: ${command} on stack: ${stackName}`);
+    // Run a command with real-time logging
+    async runCommandWithLogs(stackPath, command) {
         return new Promise((resolve, reject) => {
+            core.info(`Running Terraform command: ${command} in path: ${stackPath}`);
             const child = (0, child_process_2.spawn)(command, {
                 shell: true,
+                cwd: stackPath,
                 env: {
                     ...process.env,
                 },
             });
-            // Stream stdout
+            // Capture and log stdout
             child.stdout.on('data', (data) => {
-                process.stdout.write(data.toString());
+                core.info(data.toString().trim());
             });
-            // Stream stderr
+            // Capture and log stderr
             child.stderr.on('data', (data) => {
-                process.stderr.write(data.toString());
+                core.error(data.toString().trim());
             });
             // Handle process exit
             child.on('close', (code) => {
                 if (code === 0) {
-                    resolve({ stdout: '', stderr: '' });
+                    core.info(`Terraform command '${command}' completed successfully.`);
+                    resolve();
                 }
                 else {
-                    reject(new Error(`Command failed with exit code ${code}`));
+                    reject(new Error(`Terraform command '${command}' failed with exit code ${code}.`));
                 }
             });
             child.on('error', (error) => {
-                reject(new Error(`Failed to execute command: ${error.message}`));
+                core.error(`Error executing Terraform command '${command}': ${error.message}`);
+                reject(error);
             });
         });
     }
