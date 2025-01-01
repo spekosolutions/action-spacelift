@@ -124,7 +124,7 @@ const executeSpaceliftCommand = async (stackName, command) => {
  */
 const run = async (inputs) => {
     try {
-        const { command, label_postfix, service_name, env, zone, region, rawEnvVars, spacelift_module_token } = inputs;
+        const { command, label_postfix, service_name, env, zone, region, rawEnvVars, spacelift_module_token, env_context } = inputs;
         const githubSha = process.env.GITHUB_SHA;
         if (!githubSha) {
             throw new Error('GITHUB_SHA environment variable is not set.');
@@ -140,6 +140,7 @@ const run = async (inputs) => {
         const { spaceId, parentSpaceId } = await manageSpace(inputs);
         core.info(`Space created or managed with ID: ${spaceId}, Parent Space ID: ${parentSpaceId}`);
         const stackPath = `./deployment/${label_postfix}/stack`;
+        const stackVars = `-var 'parent_space_id=${parentSpaceId}' -var 'application=${service_name}' -var 'env=${env}' -var 'zone=${zone}' -var 'region=${region}' -var 'env_context=${env_context}`;
         const existingStack = await graphqlStackManager.getStackByName(stackName);
         if (!existingStack) {
             await executeTerraformCommand(terraformCliManager, stackPath, `terraform init`);

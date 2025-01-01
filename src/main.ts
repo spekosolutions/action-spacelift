@@ -33,6 +33,7 @@ const main = async (): Promise<void> => {
       label_postfix: core.getInput('label_postfix', { required: true }),
       rawEnvVars: core.getInput('env_vars', { required: false }),
       spacelift_module_token: core.getInput('spacelift_module_token', { required: true }),
+      env_context: core.getInput('env_context', { required: true }),
     });
   } catch (e) {
     core.setFailed((e as Error).message);
