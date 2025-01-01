@@ -39,6 +39,9 @@ inputs:
     description: "Environment variables"
     required: false
     default: "{}"
+  spacelift_module_token:
+    description: "SpaceLift module token"
+    required: true
 
 outputs:
   outputs: 
