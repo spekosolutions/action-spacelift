@@ -1112,6 +1112,7 @@ const run = async (inputs) => {
             await terraformCliManager.runCommand(stackName, `terraform deploy --auto-approve -var='parent_space_id=${parentSpaceId}'`);
         }
         if (command.startsWith('terraform')) {
+            await terraformCliManager.runCommand(stackName, `terraform init`);
             await terraformCliManager.runCommand(stackName, `${command} -var='parent_space_id=${parentSpaceId}'`);
         }
         else { // This must be a sapcelift command right?
