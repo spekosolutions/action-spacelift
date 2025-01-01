@@ -94,7 +94,7 @@ const executeTerraformCommand = async (
     environment: string;
     zone: string;
     serviceName: string;
-    stackName: string;
+    labelSuffix: string;
   }
 ): Promise<void> => {
   try {
@@ -156,7 +156,7 @@ export const run = async (inputs: Inputs): Promise<void> => {
       environment: env,
       zone,
       serviceName: service_name,
-      stackName,
+      labelSuffix: label_postfix,
     };
 
     const stackPath = `./deployment/${label_postfix}/stack`;

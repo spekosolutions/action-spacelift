@@ -145,7 +145,7 @@ const run = async (inputs) => {
             environment: env,
             zone,
             serviceName: service_name,
-            stackName,
+            labelSuffix: label_postfix,
         };
         const stackPath = `./deployment/${label_postfix}/stack`;
         const stackVars = `-var 'parent_space_id=${parentSpaceId}' -var 'application=${service_name}' -var 'env=${env}' -var 'zone=${zone}' -var 'region=${region}' -var 'env_context=${env_context}`;
