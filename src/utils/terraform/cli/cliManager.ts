@@ -36,7 +36,7 @@ terraform {
     region         = "${region}"
     dynamodb_table = "spacelift-stacks-${environment}-${region}-${awsAccountId}"
     encrypt        = true
-    kms_key_id     = "alias/terraform-backend-key"
+    kms_key_id     = "alias/aws/s3"
   }
 }
     `.trim();
