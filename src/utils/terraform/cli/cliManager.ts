@@ -65,7 +65,11 @@ class TerraformCliManager extends TerraformManager {
         backendConfigParams.stackName
       );
 
-      const fullCommand = `${command} ${backendConfig} -var 'spacelift_api_key_endpoint=${process.env.SPACELIFT_API_KEY_ENDPOINT}' -var 'spacelift_api_key_id=${process.env.SPACELIFT_KEY_ID}' -var 'spacelift_api_key_secret=${process.env.SPACELIFT_API_KEY_SECRET}'`;
+      const isInitCommand = command.includes('terraform init');
+      const fullCommand = isInitCommand
+        ? `${command} ${backendConfig}`
+        : `${command} -var 'spacelift_api_key_endpoint=${process.env.SPACELIFT_API_KEY_ENDPOINT}' -var 'spacelift_api_key_id=${process.env.SPACELIFT_KEY_ID}' -var 'spacelift_api_key_secret=${process.env.SPACELIFT_API_KEY_SECRET}'`;
+
       core.info(`Running Terraform command: ${fullCommand} in path: ${stackPath}`);
 
       const child = spawn(fullCommand, {
@@ -76,14 +80,17 @@ class TerraformCliManager extends TerraformManager {
         },
       });
 
+      // Capture and log stdout
       child.stdout.on('data', (data: Buffer) => {
         core.info(data.toString().trim());
       });
 
+      // Capture and log stderr
       child.stderr.on('data', (data: Buffer) => {
         core.error(data.toString().trim());
       });
 
+      // Handle process exit
       child.on('close', (code: number) => {
         if (code === 0) {
           core.info(`Terraform command '${command}' completed successfully.`);
