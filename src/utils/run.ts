@@ -123,7 +123,7 @@ export const run = async (inputs: Inputs): Promise<void> => {
     const existingStack = await graphqlStackManager.getStackByName(stackName);
     if(!existingStack) {
       await terraformCliManager.runCommand(stackName, `terraform init`);
-      await terraformCliManager.runCommand(stackName, `terraform deploy --auto-approve -var='parent_space_id=${parentSpaceId}'`);
+      await terraformCliManager.runCommand(stackName, `terraform apply --auto-approve -var='parent_space_id=${parentSpaceId}'`);
     }
 
     if (command.startsWith('terraform')) {
