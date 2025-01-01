@@ -30,6 +30,7 @@ const terraformManager_1 = __importDefault(require("../terraformManager"));
 const core = __importStar(require("@actions/core"));
 const child_process_1 = require("child_process");
 const util_1 = __importDefault(require("util"));
+const child_process_2 = require("child_process");
 // Promisify exec to use async/await
 const execAsync = util_1.default.promisify(child_process_1.exec);
 // Child class extending TerraformManager to handle CLI operations
@@ -39,19 +40,35 @@ class TerraformCliManager extends terraformManager_1.default {
     }
     // Run a command on a specific stack
     async runCommand(stackName, command) {
-        try {
-            core.info(`Running command '${command}' on stack '${stackName}'...`);
-            // Build the command
-            const commandToRun = `cd deployment/service/stack && ${command}`;
-            // Execute the command
-            const { stdout, stderr } = await execAsync(commandToRun);
-            core.info(`Command output:\n${stdout}`);
-            return { stdout, stderr };
-        }
-        catch (error) {
-            core.setFailed(`Failed to execute command '${command}' on stack '${stackName}': ${error.message}`);
-            throw error;
-        }
+        core.info(`Executing command: ${command} on stack: ${stackName}`);
+        return new Promise((resolve, reject) => {
+            const child = (0, child_process_2.spawn)(command, {
+                shell: true,
+                env: {
+                    ...process.env,
+                },
+            });
+            // Stream stdout
+            child.stdout.on('data', (data) => {
+                process.stdout.write(data.toString());
+            });
+            // Stream stderr
+            child.stderr.on('data', (data) => {
+                process.stderr.write(data.toString());
+            });
+            // Handle process exit
+            child.on('close', (code) => {
+                if (code === 0) {
+                    resolve({ stdout: '', stderr: '' });
+                }
+                else {
+                    reject(new Error(`Command failed with exit code ${code}`));
+                }
+            });
+            child.on('error', (error) => {
+                reject(new Error(`Failed to execute command: ${error.message}`));
+            });
+        });
     }
 }
 exports.default = TerraformCliManager;

@@ -127,8 +127,8 @@ export const run = async (inputs: Inputs): Promise<void> => {
     }
 
     if (command.startsWith('terraform')) {
-      await terraformCliManager.runCommand(stackName, `terraform init`);
-      await terraformCliManager.runCommand(stackName, `${command} -var='parent_space_id=${parentSpaceId}'`);
+      await terraformCliManager.runCommand(stackName, `cd ./deployment/${label_postfix}/stackk && terraform init`);
+      await terraformCliManager.runCommand(stackName, `cd ./deployment/${label_postfix}/stackk && ${command} -var='parent_space_id=${parentSpaceId}'`);
     } else { // This must be a sapcelift command right?
       // Run additional commands on stack
       core.info('Running additional commands on stack...');
