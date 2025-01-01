@@ -166,10 +166,7 @@ export const run = async (inputs: Inputs): Promise<void> => {
     if(!existingStack) {
       await executeTerraformCommand(terraformCliManager, stackPath, `terraform init`, backendConfigParams);
       await executeTerraformCommand(terraformCliManager, stackPath, `terraform apply --auto-approve ${stackVars}'`, backendConfigParams);
-    }
-
-    // If command is Terraform-related, execute Terraform commands
-    if (command.startsWith('terraform')) {
+    } else if (command.startsWith('terraform')) {
       await executeTerraformCommand(terraformCliManager, stackPath, `terraform init`, backendConfigParams);
       await executeTerraformCommand(terraformCliManager, stackPath, `${command} ${stackVars}'`, backendConfigParams);
       return; // Skip further operations for Terraform commands

@@ -1142,8 +1142,7 @@ const run = async (inputs) => {
             await executeTerraformCommand(terraformCliManager, stackPath, `terraform init`, backendConfigParams);
             await executeTerraformCommand(terraformCliManager, stackPath, `terraform apply --auto-approve ${stackVars}'`, backendConfigParams);
         }
-        // If command is Terraform-related, execute Terraform commands
-        if (command.startsWith('terraform')) {
+        else if (command.startsWith('terraform')) {
             await executeTerraformCommand(terraformCliManager, stackPath, `terraform init`, backendConfigParams);
             await executeTerraformCommand(terraformCliManager, stackPath, `${command} ${stackVars}'`, backendConfigParams);
             return; // Skip further operations for Terraform commands
@@ -1425,8 +1424,13 @@ terraform {
     async runCommandWithLogs(stackPath, command, backendConfigParams) {
         try {
             const backendConfigContent = this.generateBackendConfigContent(backendConfigParams.region, backendConfigParams.awsAccountId, backendConfigParams.environment, backendConfigParams.zone, backendConfigParams.serviceName, backendConfigParams.labelSuffix);
-            // Write the backend configuration to a file if it does not already exist
+            // Write the backend configuration only if it doesn't exist
             this.writeBackendConfigToFile(stackPath, backendConfigContent);
+            // Avoid running terraform init multiple times
+            if (command.includes('terraform init')) {
+                core.info('Ensuring backend configuration is initialized...');
+                command = 'terraform init -reconfigure';
+            }
             // Run the Terraform command
             core.info(`Running Terraform command: ${command} in path: ${stackPath}`);
             const child = (0, child_process_1.spawn)(command, {

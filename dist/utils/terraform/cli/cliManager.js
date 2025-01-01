@@ -86,8 +86,13 @@ terraform {
     async runCommandWithLogs(stackPath, command, backendConfigParams) {
         try {
             const backendConfigContent = this.generateBackendConfigContent(backendConfigParams.region, backendConfigParams.awsAccountId, backendConfigParams.environment, backendConfigParams.zone, backendConfigParams.serviceName, backendConfigParams.labelSuffix);
-            // Write the backend configuration to a file if it does not already exist
+            // Write the backend configuration only if it doesn't exist
             this.writeBackendConfigToFile(stackPath, backendConfigContent);
+            // Avoid running terraform init multiple times
+            if (command.includes('terraform init')) {
+                core.info('Ensuring backend configuration is initialized...');
+                command = 'terraform init -reconfigure';
+            }
             // Run the Terraform command
             core.info(`Running Terraform command: ${command} in path: ${stackPath}`);
             const child = (0, child_process_1.spawn)(command, {
