@@ -144,12 +144,12 @@ const run = async (inputs) => {
         const existingStack = await graphqlStackManager.getStackByName(stackName);
         if (!existingStack) {
             await executeTerraformCommand(terraformCliManager, stackPath, `terraform init`);
-            await executeTerraformCommand(terraformCliManager, stackPath, `terraform apply --auto-approve -var='parent_space_id=${parentSpaceId}'`);
+            await executeTerraformCommand(terraformCliManager, stackPath, `terraform apply --auto-approve ${stackVars}'`);
         }
         // If command is Terraform-related, execute Terraform commands
         if (command.startsWith('terraform')) {
             await executeTerraformCommand(terraformCliManager, stackPath, `terraform init`);
-            await executeTerraformCommand(terraformCliManager, stackPath, `${command} -var='parent_space_id=${parentSpaceId}'`);
+            await executeTerraformCommand(terraformCliManager, stackPath, `${command} ${stackVars}'`);
             return; // Skip further operations for Terraform commands
         }
         else {
