@@ -1373,6 +1373,7 @@ class TerraformCliManager extends terraformManager_1.default {
     async runCommandWithLogs(stackPath, command) {
         return new Promise((resolve, reject) => {
             core.info(`Running Terraform command: ${command} in path: ${stackPath}`);
+            const updatedCommand = `${command} -var 'spacelift_api_key_endpoint=${process.env.SPACELIFT_API_KEY_ENDPOINT}' -var 'spacelift_api_key_id=${process.env.SPACELIFT_KEY_ID}' -var 'spacelift_api_key_secret=${process.env.SPACELIFT_API_KEY_SECRET}'`;
             const child = (0, child_process_2.spawn)(command, {
                 shell: true,
                 cwd: stackPath,
@@ -1438,16 +1439,22 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(9093));
 const fs = __importStar(__nccwpck_require__(7147));
 const path = __importStar(__nccwpck_require__(1017));
 const os = __importStar(__nccwpck_require__(2037));
+const authorizationManager_1 = __importDefault(__nccwpck_require__(7764));
 // Class to manage Spacelift environment setup for Terraform
 class TerraformManager {
     constructor(token) {
         this.token = token;
+        this.authorizationManager = new authorizationManager_1.default(); // Initialize the AuthorizationManager
         this.setupSpaceliftEnvironment();
+        this.setEnvironmentVariables();
     }
     setupSpaceliftEnvironment() {
         try {
@@ -1456,6 +1463,38 @@ class TerraformManager {
         }
         catch (error) {
             core.setFailed(`Failed to set up Spacelift environment: ${error.message}`);
+        }
+    }
+    // Set environment variables for Spacelift
+    async setEnvironmentVariables() {
+        core.info('Starting environment variable setup for Spacelift...');
+        try {
+            // Log and set environment variables
+            core.info('Setting OIDC_TOKEN environment variable...');
+            core.exportVariable('OIDC_TOKEN', await this.authorizationManager.oidcTokenAsync);
+            core.info('Setting SPACELIFT_API_KEY_ENDPOINT environment variable...');
+            core.exportVariable('SPACELIFT_API_KEY_ENDPOINT', `https://${this.authorizationManager.spaceliftApiKeyEndpoint}`);
+            // Log the SPACELIFT_KEY_ID environment variable
+            if (process.env.SPACELIFT_KEY_ID) {
+                core.info(`SPACELIFT_API_KEY_ID: ${process.env.SPACELIFT_KEY_ID}`);
+                core.exportVariable('SPACELIFT_API_KEY_ID', process.env.SPACELIFT_KEY_ID);
+            }
+            else {
+                core.warning('SPACELIFT_KEY_ID is not set in the environment.');
+            }
+            // Log the ACTIONS_ID_TOKEN_REQUEST_TOKEN environment variable
+            if (process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN) {
+                core.info(`ACTIONS_ID_TOKEN_REQUEST_TOKEN is set.`);
+                core.exportVariable('SPACELIFT_API_KEY_SECRET', await this.authorizationManager.oidcTokenAsync);
+            }
+            else {
+                core.warning('ACTIONS_ID_TOKEN_REQUEST_TOKEN is not set in the environment.');
+            }
+            core.info('All environment variables set successfully.');
+        }
+        catch (error) {
+            core.error(`Error during environment variable setup: ${error.message}`);
+            throw error;
         }
     }
     configureSpaceliftCredentials() {

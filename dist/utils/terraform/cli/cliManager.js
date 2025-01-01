@@ -42,6 +42,7 @@ class TerraformCliManager extends terraformManager_1.default {
     async runCommandWithLogs(stackPath, command) {
         return new Promise((resolve, reject) => {
             core.info(`Running Terraform command: ${command} in path: ${stackPath}`);
+            const updatedCommand = `${command} -var 'spacelift_api_key_endpoint=${process.env.SPACELIFT_API_KEY_ENDPOINT}' -var 'spacelift_api_key_id=${process.env.SPACELIFT_KEY_ID}' -var 'spacelift_api_key_secret=${process.env.SPACELIFT_API_KEY_SECRET}'`;
             const child = (0, child_process_2.spawn)(command, {
                 shell: true,
                 cwd: stackPath,
