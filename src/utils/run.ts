@@ -120,15 +120,17 @@ export const run = async (inputs: Inputs): Promise<void> => {
     core.info(`Space created or managed with ID: ${spaceId}, Parent Space ID: ${parentSpaceId}`);
 
     // If command is Terraform-related or stack doesn't exist, execute the command
+    const stack_path = `./deployment/${label_postfix}/stack`;
+
     const existingStack = await graphqlStackManager.getStackByName(stackName);
     if(!existingStack) {
-      await terraformCliManager.runCommand(stackName, `terraform init`);
-      await terraformCliManager.runCommand(stackName, `terraform apply --auto-approve -var='parent_space_id=${parentSpaceId}'`);
+      await terraformCliManager.runCommand(stackName, `cd ${stack_path} terraform init`);
+      await terraformCliManager.runCommand(stackName, `cd ${stack_path} terraform apply --auto-approve -var='parent_space_id=${parentSpaceId}'`);
     }
 
     if (command.startsWith('terraform')) {
-      await terraformCliManager.runCommand(stackName, `cd ./deployment/${label_postfix}/stackk && terraform init`);
-      await terraformCliManager.runCommand(stackName, `cd ./deployment/${label_postfix}/stackk && ${command} -var='parent_space_id=${parentSpaceId}'`);
+      await terraformCliManager.runCommand(stackName, `cd ${stack_path} && terraform init`);
+      await terraformCliManager.runCommand(stackName, `cd ${stack_path} && ${command} -var='parent_space_id=${parentSpaceId}'`);
     } else { // This must be a sapcelift command right?
       // Run additional commands on stack
       core.info('Running additional commands on stack...');
