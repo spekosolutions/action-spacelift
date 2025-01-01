@@ -1423,36 +1423,39 @@ terraform {
      */
     async runCommandWithLogs(stackPath, command, backendConfigParams) {
         try {
+            // Generate and write backend configuration if it doesn't exist
             const backendConfigContent = this.generateBackendConfigContent(backendConfigParams.region, backendConfigParams.awsAccountId, backendConfigParams.environment, backendConfigParams.zone, backendConfigParams.serviceName, backendConfigParams.labelSuffix);
-            // Write the backend configuration only if it doesn't exist
             this.writeBackendConfigToFile(stackPath, backendConfigContent);
-            // Avoid running terraform init multiple times
-            if (command.includes('terraform init')) {
-                core.info('Ensuring backend configuration is initialized...');
-                command = 'terraform init -reconfigure';
-            }
-            // Run the Terraform command
+            // Log the command and ensure it runs sequentially
             core.info(`Running Terraform command: ${command} in path: ${stackPath}`);
-            const child = (0, child_process_1.spawn)(command, {
-                shell: true,
-                cwd: stackPath,
-                env: {
-                    ...process.env,
-                },
-            });
-            child.stdout.on('data', (data) => {
-                core.info(data.toString().trim());
-            });
-            child.stderr.on('data', (data) => {
-                core.error(data.toString().trim());
-            });
-            child.on('close', (code) => {
-                if (code === 0) {
-                    core.info(`Terraform command '${command}' completed successfully.`);
-                }
-                else {
-                    throw new Error(`Terraform command '${command}' failed with exit code ${code}.`);
-                }
+            await new Promise((resolve, reject) => {
+                const child = (0, child_process_1.spawn)(command, {
+                    shell: true,
+                    cwd: stackPath,
+                    env: {
+                        ...process.env,
+                    },
+                });
+                // Capture stdout and stderr logs
+                child.stdout.on('data', (data) => {
+                    core.info(data.toString().trim());
+                });
+                child.stderr.on('data', (data) => {
+                    core.error(data.toString().trim());
+                });
+                child.on('close', (code) => {
+                    if (code === 0) {
+                        core.info(`Terraform command '${command}' completed successfully.`);
+                        resolve();
+                    }
+                    else {
+                        reject(new Error(`Terraform command '${command}' failed with exit code ${code}.`));
+                    }
+                });
+                child.on('error', (error) => {
+                    core.error(`Error executing Terraform command '${command}': ${error.message}`);
+                    reject(error);
+                });
             });
         }
         catch (error) {

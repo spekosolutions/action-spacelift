@@ -78,6 +78,7 @@ terraform {
     }
   ): Promise<void> {
     try {
+      // Generate and write backend configuration if it doesn't exist
       const backendConfigContent = this.generateBackendConfigContent(
         backendConfigParams.region,
         backendConfigParams.awsAccountId,
@@ -86,46 +87,48 @@ terraform {
         backendConfigParams.serviceName,
         backendConfigParams.labelSuffix
       );
-  
-      // Write the backend configuration only if it doesn't exist
       this.writeBackendConfigToFile(stackPath, backendConfigContent);
   
-      // Avoid running terraform init multiple times
-      if (command.includes('terraform init')) {
-        core.info('Ensuring backend configuration is initialized...');
-        command = 'terraform init -reconfigure';
-      }
-  
-      // Run the Terraform command
+      // Log the command and ensure it runs sequentially
       core.info(`Running Terraform command: ${command} in path: ${stackPath}`);
-      const child = spawn(command, {
-        shell: true,
-        cwd: stackPath,
-        env: {
-          ...process.env,
-        },
-      });
   
-      child.stdout.on('data', (data: Buffer) => {
-        core.info(data.toString().trim());
-      });
+      await new Promise<void>((resolve, reject) => {
+        const child = spawn(command, {
+          shell: true,
+          cwd: stackPath,
+          env: {
+            ...process.env,
+          },
+        });
   
-      child.stderr.on('data', (data: Buffer) => {
-        core.error(data.toString().trim());
-      });
+        // Capture stdout and stderr logs
+        child.stdout.on('data', (data: Buffer) => {
+          core.info(data.toString().trim());
+        });
   
-      child.on('close', (code: number) => {
-        if (code === 0) {
-          core.info(`Terraform command '${command}' completed successfully.`);
-        } else {
-          throw new Error(`Terraform command '${command}' failed with exit code ${code}.`);
-        }
+        child.stderr.on('data', (data: Buffer) => {
+          core.error(data.toString().trim());
+        });
+  
+        child.on('close', (code: number) => {
+          if (code === 0) {
+            core.info(`Terraform command '${command}' completed successfully.`);
+            resolve();
+          } else {
+            reject(new Error(`Terraform command '${command}' failed with exit code ${code}.`));
+          }
+        });
+  
+        child.on('error', (error: Error) => {
+          core.error(`Error executing Terraform command '${command}': ${error.message}`);
+          reject(error);
+        });
       });
     } catch (error) {
       core.error(`Error executing Terraform command: ${(error as Error).message}`);
       throw error;
     }
-  }  
+  }
 }
 
 export default TerraformCliManager;
