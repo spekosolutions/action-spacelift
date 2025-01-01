@@ -87,11 +87,19 @@ const manageStack = async (stackName: string, spaceId: string, inputs: Inputs): 
 const executeTerraformCommand = async (
   terraformCliManager: TerraformCliManager,
   stackPath: string,
-  command: string
+  command: string,
+  backendConfigParams: {
+    region: string;
+    awsAccountId: string;
+    environment: string;
+    zone: string;
+    serviceName: string;
+    stackName: string;
+  }
 ): Promise<void> => {
   try {
     core.info(`Executing Terraform command: ${command}`);
-    await terraformCliManager.runCommandWithLogs(stackPath, command);
+    await terraformCliManager.runCommandWithLogs(stackPath, command, backendConfigParams);
     core.info(`Terraform command executed successfully: ${command}`);
   } catch (error) {
     core.error(`Terraform command failed: ${(error as Error).message}`);
@@ -142,19 +150,28 @@ export const run = async (inputs: Inputs): Promise<void> => {
     const { spaceId, parentSpaceId } = await manageSpace(inputs);
     core.info(`Space created or managed with ID: ${spaceId}, Parent Space ID: ${parentSpaceId}`);
 
+    const backendConfigParams = {
+      region,
+      awsAccountId: process.env.AWS_ACCOUNT_ID!,
+      environment: env,
+      zone,
+      serviceName: service_name,
+      stackName,
+    };
+
     const stackPath = `./deployment/${label_postfix}/stack`;
     const stackVars = `-var 'parent_space_id=${parentSpaceId}' -var 'application=${service_name}' -var 'env=${env}' -var 'zone=${zone}' -var 'region=${region}' -var 'env_context=${env_context}`;
     const existingStack = await graphqlStackManager.getStackByName(stackName);
 
     if(!existingStack) {
-      await executeTerraformCommand(terraformCliManager, stackPath, `terraform init`);
-      await executeTerraformCommand(terraformCliManager, stackPath, `terraform apply --auto-approve ${stackVars}'`);
+      await executeTerraformCommand(terraformCliManager, stackPath, `terraform init`, backendConfigParams);
+      await executeTerraformCommand(terraformCliManager, stackPath, `terraform apply --auto-approve ${stackVars}'`, backendConfigParams);
     }
 
     // If command is Terraform-related, execute Terraform commands
     if (command.startsWith('terraform')) {
-      await executeTerraformCommand(terraformCliManager, stackPath, `terraform init`);
-      await executeTerraformCommand(terraformCliManager, stackPath, `${command} ${stackVars}'`);
+      await executeTerraformCommand(terraformCliManager, stackPath, `terraform init`, backendConfigParams);
+      await executeTerraformCommand(terraformCliManager, stackPath, `${command} ${stackVars}'`, backendConfigParams);
       return; // Skip further operations for Terraform commands
     } else {
       // If command is Spacelift-related, execute Spacelift commands

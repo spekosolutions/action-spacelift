@@ -1082,10 +1082,10 @@ const manageStack = async (stackName, spaceId, inputs) => {
 /**
  * Execute Terraform commands with real-time log streaming
  */
-const executeTerraformCommand = async (terraformCliManager, stackPath, command) => {
+const executeTerraformCommand = async (terraformCliManager, stackPath, command, backendConfigParams) => {
     try {
         core.info(`Executing Terraform command: ${command}`);
-        await terraformCliManager.runCommandWithLogs(stackPath, command);
+        await terraformCliManager.runCommandWithLogs(stackPath, command, backendConfigParams);
         core.info(`Terraform command executed successfully: ${command}`);
     }
     catch (error) {
@@ -1127,17 +1127,25 @@ const run = async (inputs) => {
         core.info('Creating or managing space...');
         const { spaceId, parentSpaceId } = await manageSpace(inputs);
         core.info(`Space created or managed with ID: ${spaceId}, Parent Space ID: ${parentSpaceId}`);
+        const backendConfigParams = {
+            region,
+            awsAccountId: process.env.AWS_ACCOUNT_ID,
+            environment: env,
+            zone,
+            serviceName: service_name,
+            stackName,
+        };
         const stackPath = `./deployment/${label_postfix}/stack`;
         const stackVars = `-var 'parent_space_id=${parentSpaceId}' -var 'application=${service_name}' -var 'env=${env}' -var 'zone=${zone}' -var 'region=${region}' -var 'env_context=${env_context}`;
         const existingStack = await graphqlStackManager.getStackByName(stackName);
         if (!existingStack) {
-            await executeTerraformCommand(terraformCliManager, stackPath, `terraform init`);
-            await executeTerraformCommand(terraformCliManager, stackPath, `terraform apply --auto-approve ${stackVars}'`);
+            await executeTerraformCommand(terraformCliManager, stackPath, `terraform init`, backendConfigParams);
+            await executeTerraformCommand(terraformCliManager, stackPath, `terraform apply --auto-approve ${stackVars}'`, backendConfigParams);
         }
         // If command is Terraform-related, execute Terraform commands
         if (command.startsWith('terraform')) {
-            await executeTerraformCommand(terraformCliManager, stackPath, `terraform init`);
-            await executeTerraformCommand(terraformCliManager, stackPath, `${command} ${stackVars}'`);
+            await executeTerraformCommand(terraformCliManager, stackPath, `terraform init`, backendConfigParams);
+            await executeTerraformCommand(terraformCliManager, stackPath, `${command} ${stackVars}'`, backendConfigParams);
             return; // Skip further operations for Terraform commands
         }
         else {
@@ -1360,36 +1368,56 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 const terraformManager_1 = __importDefault(__nccwpck_require__(8800));
 const core = __importStar(__nccwpck_require__(9093));
 const child_process_1 = __nccwpck_require__(2081);
-const util_1 = __importDefault(__nccwpck_require__(3837));
-const child_process_2 = __nccwpck_require__(2081);
-// Promisify exec to use async/await
-const execAsync = util_1.default.promisify(child_process_1.exec);
 // Child class extending TerraformManager to handle CLI operations
 class TerraformCliManager extends terraformManager_1.default {
     constructor(token) {
         super(token);
     }
-    // Run a command with real-time logging
-    async runCommandWithLogs(stackPath, command) {
+    /**
+     * Generate backend configuration string for Terraform
+     * @param {string} region - AWS region
+     * @param {string} awsAccountId - AWS account ID
+     * @param {string} environment - Environment name (e.g., dev1)
+     * @param {string} zone - Zone name (e.g., na1)
+     * @param {string} serviceName - Service name
+     * @param {string} stackName - Stack name
+     * @returns {string} Backend configuration string
+     */
+    generateBackendConfig(region, awsAccountId, environment, zone, serviceName, stackName) {
+        return [
+            `-backend-config="bucket=spacelift-stacks-${region}-${awsAccountId}"`,
+            `-backend-config="key=${environment}/${zone}/${serviceName}/${stackName}/terraform.tfstate"`,
+            `-backend-config="region=${region}"`,
+            `-backend-config="dynamodb_table=spacelift-stacks-${environment}-${region}-${awsAccountId}"`,
+            `-backend-config="encrypt=true"`,
+            `-backend-config="kms_key_id=alias/terraform-backend-key"`
+        ].join(' ');
+    }
+    /**
+     * Run a command with real-time logging
+     * @param {string} stackPath - The path to the stack
+     * @param {string} command - The Terraform command to run
+     * @param {object} backendConfigParams - Parameters for generating backend configuration
+     * @returns {Promise<void>} Resolves when the command completes successfully
+     */
+    async runCommandWithLogs(stackPath, command, backendConfigParams) {
         return new Promise((resolve, reject) => {
-            core.info(`Running Terraform command: ${command} in path: ${stackPath}`);
-            const updatedCommand = `${command} -var 'spacelift_api_key_endpoint=${process.env.SPACELIFT_API_KEY_ENDPOINT}' -var 'spacelift_api_key_id=${process.env.SPACELIFT_KEY_ID}' -var 'spacelift_api_key_secret=${process.env.SPACELIFT_API_KEY_SECRET}'`;
-            const child = (0, child_process_2.spawn)(command, {
+            const backendConfig = this.generateBackendConfig(backendConfigParams.region, backendConfigParams.awsAccountId, backendConfigParams.environment, backendConfigParams.zone, backendConfigParams.serviceName, backendConfigParams.stackName);
+            const fullCommand = `${command} ${backendConfig} -var 'spacelift_api_key_endpoint=${process.env.SPACELIFT_API_KEY_ENDPOINT}' -var 'spacelift_api_key_id=${process.env.SPACELIFT_KEY_ID}' -var 'spacelift_api_key_secret=${process.env.SPACELIFT_API_KEY_SECRET}'`;
+            core.info(`Running Terraform command: ${fullCommand} in path: ${stackPath}`);
+            const child = (0, child_process_1.spawn)(fullCommand, {
                 shell: true,
                 cwd: stackPath,
                 env: {
                     ...process.env,
                 },
             });
-            // Capture and log stdout
             child.stdout.on('data', (data) => {
                 core.info(data.toString().trim());
             });
-            // Capture and log stderr
             child.stderr.on('data', (data) => {
                 core.error(data.toString().trim());
             });
-            // Handle process exit
             child.on('close', (code) => {
                 if (code === 0) {
                     core.info(`Terraform command '${command}' completed successfully.`);
