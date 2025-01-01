@@ -43,15 +43,19 @@ terraform {
   }
 
   /**
-   * Write backend configuration to a file
+   * Write backend configuration to a file if it does not already exist
    * @param {string} stackPath - Path to the Terraform stack
    * @param {string} backendConfigContent - Backend configuration content
    * @returns {void}
    */
   writeBackendConfigToFile(stackPath: string, backendConfigContent: string): void {
-    const backendFilePath = path.join(stackPath, 'backend.tf');
-    fs.writeFileSync(backendFilePath, backendConfigContent, 'utf8');
-    core.info(`Backend configuration written to ${backendFilePath}`);
+    const backendFilePath = path.join(stackPath, 'state.tf');
+    if (!fs.existsSync(backendFilePath)) {
+      fs.writeFileSync(backendFilePath, backendConfigContent, 'utf8');
+      core.info(`Backend configuration written to ${backendFilePath}`);
+    } else {
+      core.info(`Backend configuration already exists at ${backendFilePath}`);
+    }
   }
 
   /**
@@ -83,7 +87,7 @@ terraform {
         backendConfigParams.labelSuffix
       );
 
-      // Write the backend configuration to a file
+      // Write the backend configuration to a file if it does not already exist
       this.writeBackendConfigToFile(stackPath, backendConfigContent);
 
       // Run the Terraform command
