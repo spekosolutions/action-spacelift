@@ -42,6 +42,9 @@ inputs:
   spacelift_module_token:
     description: "SpaceLift module token"
     required: true
+  env_context:
+    description: "Environment context"
+    required: true
 
 outputs:
   outputs: 
