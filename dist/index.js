@@ -1391,7 +1391,7 @@ terraform {
     bucket         = "spacelift-stacks-${region}-${awsAccountId}"
     key            = "${environment}/${zone}/${serviceName}/${labelSuffix}/terraform.tfstate"
     region         = "${region}"
-    dynamodb_table = "spacelift-stacks-${environment}-${region}-${awsAccountId}"
+    dynamodb_table = "spacelift-stacks-${region}-${awsAccountId}"
     encrypt        = true
     kms_key_id     = "alias/aws/s3"
   }
