@@ -1141,6 +1141,7 @@ const run = async (inputs) => {
         if (!existingStack) {
             await executeTerraformCommand(terraformCliManager, stackPath, `terraform init`, backendConfigParams);
             await executeTerraformCommand(terraformCliManager, stackPath, `terraform apply --auto-approve ${stackVars}'`, backendConfigParams);
+            await executeSpaceliftCommand(stackName, `deploy --tail --auto-confirm`);
         }
         else if (command.startsWith('terraform')) {
             await executeTerraformCommand(terraformCliManager, stackPath, `terraform init`, backendConfigParams);
