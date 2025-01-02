@@ -618,8 +618,8 @@ class SpaceManager extends graphQLManager_1.default {
     }
     // Method to create service space with clear distinction for existing space
     async createServiceSpace(inputs) {
-        const { label_prefix, env, region, service_name, label_postfix } = inputs;
-        const label = `${label_prefix}:${env}:${region}:${service_name}`;
+        const { label_prefix, env, zone, service_name } = inputs;
+        const label = `${label_prefix}:${env}:${zone}:${service_name}`;
         const labelParts = label.split(':');
         let parentId = undefined;
         let isNewSpaceCreated = false; // Flag to check if new space was created

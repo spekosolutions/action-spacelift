@@ -8,8 +8,8 @@ class SpaceManager extends GraphQLManager {
 
   // Method to create service space with clear distinction for existing space
   async createServiceSpace(inputs: any): Promise<string> {
-    const { label_prefix, env, region, service_name, label_postfix } = inputs
-    const label = `${label_prefix}:${env}:${region}:${service_name}`
+    const { label_prefix, env, zone, service_name } = inputs
+    const label = `${label_prefix}:${env}:${zone}:${service_name}`
     const labelParts = label.split(':')
 
     let parentId: string | undefined = undefined
