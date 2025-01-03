@@ -23,9 +23,13 @@ class Config {
   public readonly stackName: string;
   public readonly stackPath: string;
   public readonly zone: string;
+  public readonly actionsIdTokenRequestUrl: string;
+  public readonly actionsIdTokenRequestToken: string;
+  public readonly spaceliftApiKeyEndpoint: string;
+  public readonly apiKeyId: string;
   public parentSpaceId?: string;
 
-  private constructor() {
+  private constructor(apiKeyEndpoint?: string) {
     // Initialize settings from environment variables or inputs
     this.awsAccountId = process.env.AWS_ACCOUNT_ID!;
     this.command = core.getInput('command', { required: true });
@@ -46,7 +50,13 @@ class Config {
     this.stack_dynamodb_table = `spacelift-stacks-${this.region}-${this.awsAccountId}`
     this.stack_encrypt = true
     this.stack_kms_key_id = "alias/aws/s3"
-
+    this.actionsIdTokenRequestUrl = process.env.ACTIONS_ID_TOKEN_REQUEST_URL || '';
+    this.actionsIdTokenRequestToken = process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN || '';
+    // Use the apiKeyEndpoint parameter if provided, otherwise fallback to the environment variable
+    this.spaceliftApiKeyEndpoint = apiKeyEndpoint && apiKeyEndpoint.trim() !== ''
+      ? apiKeyEndpoint
+      : process.env.SPACELIFT_API_KEY_ENDPOINT || '';
+    this.apiKeyId = process.env.SPACELIFT_KEY_ID || '';
     // Parse raw environment variables JSON
     const rawEnvVars = core.getInput('env_vars', { required: false }) || '{}';
     this.envVars = this.parseEnvVars(rawEnvVars);

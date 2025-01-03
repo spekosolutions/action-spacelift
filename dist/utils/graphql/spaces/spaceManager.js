@@ -27,17 +27,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const graphQLManager_1 = __importDefault(require("../graphQLManager"));
-const config_1 = __importDefault(require("../../config/config"));
 const core = __importStar(require("@actions/core"));
 class SpaceManager extends graphQLManager_1.default {
     constructor() {
         super();
-        this.config = config_1.default.getInstance();
     }
     // Method to create service space with clear distinction for existing space
     async createServiceSpace() {
-        const { labelPrefix, env, zone, serviceName } = this.config;
-        const label = `${labelPrefix}:${env}:${zone}:${serviceName}`;
+        const label = `${this.config.labelPrefix}:${this.config.env}:${this.config.zone}:${this.config.serviceName}`;
         const labelParts = label.split(':');
         let parentId = undefined;
         let isNewSpaceCreated = false; // Flag to check if new space was created

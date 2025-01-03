@@ -29,25 +29,20 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthorizationManager = void 0;
 const axios_1 = __importDefault(require("axios"));
 const core = __importStar(require("@actions/core"));
+const config_1 = __importDefault(require("../config/config"));
 class AuthorizationManager {
-    constructor(apiKeyEndpoint) {
+    constructor() {
         this.oidcToken = null;
         this.oidcTokenExpiration = null;
         this.bearerToken = null;
         this.bearerTokenExpiration = null;
-        this.actionsIdTokenRequestToken = process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN || '';
-        this.actionsIdTokenRequestUrl = process.env.ACTIONS_ID_TOKEN_REQUEST_URL || '';
-        // Use the apiKeyEndpoint parameter if provided, otherwise fallback to the environment variable
-        this.spaceliftApiKeyEndpoint = apiKeyEndpoint && apiKeyEndpoint.trim() !== ''
-            ? apiKeyEndpoint
-            : process.env.SPACELIFT_API_KEY_ENDPOINT || '';
-        this.apiKeyId = process.env.SPACELIFT_KEY_ID || '';
+        this.config = config_1.default.getInstance();
     }
     async generateOidcToken() {
         try {
             core.info('Generating OIDC token...');
-            const response = await axios_1.default.get(`${this.actionsIdTokenRequestUrl}&audience=${this.spaceliftApiKeyEndpoint}`, {
-                headers: { Authorization: `Bearer ${this.actionsIdTokenRequestToken}` }
+            const response = await axios_1.default.get(`${this.config.actionsIdTokenRequestUrl}&audience=${this.config.spaceliftApiKeyEndpoint}`, {
+                headers: { Authorization: `Bearer ${this.config.actionsIdTokenRequestToken}` }
             });
             this.oidcToken = response.data.value;
             const expiry = response.data.expiration || 3600;
@@ -73,14 +68,14 @@ class AuthorizationManager {
                 const query = {
                     query: `
                         mutation {
-                            apiKeyUser(id: "${this.apiKeyId}", secret: "${this.oidcToken}") {
+                            apiKeyUser(id: "${this.config.apiKeyId}", secret: "${this.oidcToken}") {
                                 jwt
                                 validUntil
                             }
                         }
                     `
                 };
-                const response = await axios_1.default.post(`https://${this.spaceliftApiKeyEndpoint}/graphql`, query, {
+                const response = await axios_1.default.post(`https://${this.config.spaceliftApiKeyEndpoint}/graphql`, query, {
                     headers: { 'Content-Type': 'application/json' }
                 });
                 core.info(`GraphQL Response: ${JSON.stringify(response.data)}`);

@@ -3,16 +3,16 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import AuthorizationManager from '../authorization/authorizationManager';
-
+import Config from '../config/config';
 
 // Class to manage Spacelift environment setup for Terraform
 class TerraformManager {
   private authorizationManager: AuthorizationManager;
-  private token: string;
+  protected config: Config;
 
-  constructor(token: string) {
-    this.token = token;
+  constructor() {
     this.authorizationManager = new AuthorizationManager();  // Initialize the AuthorizationManager
+    this.config = Config.getInstance();
     this.setupSpaceliftEnvironment();
     this.setEnvironmentVariables();
   }
@@ -36,7 +36,7 @@ class TerraformManager {
       core.exportVariable('OIDC_TOKEN', await this.authorizationManager.oidcTokenAsync)
 
       core.info('Setting SPACELIFT_API_KEY_ENDPOINT environment variable...')
-      core.exportVariable('SPACELIFT_API_KEY_ENDPOINT', `https://${this.authorizationManager.spaceliftApiKeyEndpoint}`)
+      core.exportVariable('SPACELIFT_API_KEY_ENDPOINT', `https://${this.config.spaceliftApiKeyEndpoint}`)
 
       // Log the SPACELIFT_KEY_ID environment variable
       if (process.env.SPACELIFT_KEY_ID) {
@@ -76,7 +76,7 @@ class TerraformManager {
       const credentialsContent = {
         credentials: {
           'spacelift.io': {
-            token: this.token,
+            token: this.config.spaceliftModuleToken,
           },
         },
       };

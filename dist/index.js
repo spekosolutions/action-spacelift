@@ -316,25 +316,20 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.AuthorizationManager = void 0;
 const axios_1 = __importDefault(__nccwpck_require__(5449));
 const core = __importStar(__nccwpck_require__(9093));
+const config_1 = __importDefault(__nccwpck_require__(6741));
 class AuthorizationManager {
-    constructor(apiKeyEndpoint) {
+    constructor() {
         this.oidcToken = null;
         this.oidcTokenExpiration = null;
         this.bearerToken = null;
         this.bearerTokenExpiration = null;
-        this.actionsIdTokenRequestToken = process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN || '';
-        this.actionsIdTokenRequestUrl = process.env.ACTIONS_ID_TOKEN_REQUEST_URL || '';
-        // Use the apiKeyEndpoint parameter if provided, otherwise fallback to the environment variable
-        this.spaceliftApiKeyEndpoint = apiKeyEndpoint && apiKeyEndpoint.trim() !== ''
-            ? apiKeyEndpoint
-            : process.env.SPACELIFT_API_KEY_ENDPOINT || '';
-        this.apiKeyId = process.env.SPACELIFT_KEY_ID || '';
+        this.config = config_1.default.getInstance();
     }
     async generateOidcToken() {
         try {
             core.info('Generating OIDC token...');
-            const response = await axios_1.default.get(`${this.actionsIdTokenRequestUrl}&audience=${this.spaceliftApiKeyEndpoint}`, {
-                headers: { Authorization: `Bearer ${this.actionsIdTokenRequestToken}` }
+            const response = await axios_1.default.get(`${this.config.actionsIdTokenRequestUrl}&audience=${this.config.spaceliftApiKeyEndpoint}`, {
+                headers: { Authorization: `Bearer ${this.config.actionsIdTokenRequestToken}` }
             });
             this.oidcToken = response.data.value;
             const expiry = response.data.expiration || 3600;
@@ -360,14 +355,14 @@ class AuthorizationManager {
                 const query = {
                     query: `
                         mutation {
-                            apiKeyUser(id: "${this.apiKeyId}", secret: "${this.oidcToken}") {
+                            apiKeyUser(id: "${this.config.apiKeyId}", secret: "${this.oidcToken}") {
                                 jwt
                                 validUntil
                             }
                         }
                     `
                 };
-                const response = await axios_1.default.post(`https://${this.spaceliftApiKeyEndpoint}/graphql`, query, {
+                const response = await axios_1.default.post(`https://${this.config.spaceliftApiKeyEndpoint}/graphql`, query, {
                     headers: { 'Content-Type': 'application/json' }
                 });
                 core.info(`GraphQL Response: ${JSON.stringify(response.data)}`);
@@ -481,7 +476,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(9093));
 class Config {
-    constructor() {
+    constructor(apiKeyEndpoint) {
         // Initialize settings from environment variables or inputs
         this.awsAccountId = process.env.AWS_ACCOUNT_ID;
         this.command = core.getInput('command', { required: true });
@@ -502,6 +497,13 @@ class Config {
         this.stack_dynamodb_table = `spacelift-stacks-${this.region}-${this.awsAccountId}`;
         this.stack_encrypt = true;
         this.stack_kms_key_id = "alias/aws/s3";
+        this.actionsIdTokenRequestUrl = process.env.ACTIONS_ID_TOKEN_REQUEST_URL || '';
+        this.actionsIdTokenRequestToken = process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN || '';
+        // Use the apiKeyEndpoint parameter if provided, otherwise fallback to the environment variable
+        this.spaceliftApiKeyEndpoint = apiKeyEndpoint && apiKeyEndpoint.trim() !== ''
+            ? apiKeyEndpoint
+            : process.env.SPACELIFT_API_KEY_ENDPOINT || '';
+        this.apiKeyId = process.env.SPACELIFT_KEY_ID || '';
         // Parse raw environment variables JSON
         const rawEnvVars = core.getInput('env_vars', { required: false }) || '{}';
         this.envVars = this.parseEnvVars(rawEnvVars);
@@ -581,15 +583,17 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 const axios_1 = __importDefault(__nccwpck_require__(5449));
 const core = __importStar(__nccwpck_require__(9093));
 const authorizationManager_1 = __importDefault(__nccwpck_require__(7764));
+const config_1 = __importDefault(__nccwpck_require__(6741));
 class GraphQLManager {
     constructor() {
+        this.config = config_1.default.getInstance();
         this.authorizationManager = new authorizationManager_1.default(); // Initialize the AuthorizationManager
     }
     // Send GraphQL request with Bearer token
     async sendRequest(mutation) {
         try {
             const bearerToken = await this.authorizationManager.bearerTokenAsync; // Retrieve Bearer token
-            const response = await axios_1.default.post(`https://${this.authorizationManager.spaceliftApiKeyEndpoint}/graphql`, mutation, {
+            const response = await axios_1.default.post(`https://${this.config.spaceliftApiKeyEndpoint}/graphql`, mutation, {
                 headers: {
                     Authorization: `Bearer ${bearerToken}`,
                     'Content-Type': 'application/json',
@@ -713,17 +717,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const graphQLManager_1 = __importDefault(__nccwpck_require__(9343));
-const config_1 = __importDefault(__nccwpck_require__(6741));
 const core = __importStar(__nccwpck_require__(9093));
 class SpaceManager extends graphQLManager_1.default {
     constructor() {
         super();
-        this.config = config_1.default.getInstance();
     }
     // Method to create service space with clear distinction for existing space
     async createServiceSpace() {
-        const { labelPrefix, env, zone, serviceName } = this.config;
-        const label = `${labelPrefix}:${env}:${zone}:${serviceName}`;
+        const label = `${this.config.labelPrefix}:${this.config.env}:${this.config.zone}:${this.config.serviceName}`;
         const labelParts = label.split(':');
         let parentId = undefined;
         let isNewSpaceCreated = false; // Flag to check if new space was created
@@ -1253,10 +1254,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(9093));
 const authorizationManager_1 = __importDefault(__nccwpck_require__(7764));
+const config_1 = __importDefault(__nccwpck_require__(6741));
 // Parent class to manage common Spacelift environment setup
 class SpacectlManager {
     constructor() {
         this.authorizationManager = new authorizationManager_1.default(); // Initialize the AuthorizationManager
+        this.config = config_1.default.getInstance();
     }
     // Set environment variables for Spacelift
     async setEnvironmentVariables() {
@@ -1266,7 +1269,7 @@ class SpacectlManager {
             core.info('Setting OIDC_TOKEN environment variable...');
             core.exportVariable('OIDC_TOKEN', await this.authorizationManager.oidcTokenAsync);
             core.info('Setting SPACELIFT_API_KEY_ENDPOINT environment variable...');
-            core.exportVariable('SPACELIFT_API_KEY_ENDPOINT', `https://${this.authorizationManager.spaceliftApiKeyEndpoint}`);
+            core.exportVariable('SPACELIFT_API_KEY_ENDPOINT', `https://${this.config.spaceliftApiKeyEndpoint}`);
             // Log the SPACELIFT_KEY_ID environment variable
             if (process.env.SPACELIFT_KEY_ID) {
                 core.info(`SPACELIFT_API_KEY_ID: ${process.env.SPACELIFT_KEY_ID}`);
@@ -1422,7 +1425,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const terraformManager_1 = __importDefault(__nccwpck_require__(8800));
-const config_1 = __importDefault(__nccwpck_require__(6741));
 const core = __importStar(__nccwpck_require__(9093));
 const fs = __importStar(__nccwpck_require__(7147));
 const path = __importStar(__nccwpck_require__(1017));
@@ -1431,9 +1433,7 @@ const util_1 = __nccwpck_require__(3837);
 const execAsync = (0, util_1.promisify)(child_process_1.exec);
 class TerraformCliManager extends terraformManager_1.default {
     constructor() {
-        const config = config_1.default.getInstance();
-        super(config.spaceliftModuleToken);
-        this.config = config;
+        super();
         this.initializeTerraform();
     }
     /**
@@ -1582,11 +1582,12 @@ const fs = __importStar(__nccwpck_require__(7147));
 const path = __importStar(__nccwpck_require__(1017));
 const os = __importStar(__nccwpck_require__(2037));
 const authorizationManager_1 = __importDefault(__nccwpck_require__(7764));
+const config_1 = __importDefault(__nccwpck_require__(6741));
 // Class to manage Spacelift environment setup for Terraform
 class TerraformManager {
-    constructor(token) {
-        this.token = token;
+    constructor() {
         this.authorizationManager = new authorizationManager_1.default(); // Initialize the AuthorizationManager
+        this.config = config_1.default.getInstance();
         this.setupSpaceliftEnvironment();
         this.setEnvironmentVariables();
     }
@@ -1607,7 +1608,7 @@ class TerraformManager {
             core.info('Setting OIDC_TOKEN environment variable...');
             core.exportVariable('OIDC_TOKEN', await this.authorizationManager.oidcTokenAsync);
             core.info('Setting SPACELIFT_API_KEY_ENDPOINT environment variable...');
-            core.exportVariable('SPACELIFT_API_KEY_ENDPOINT', `https://${this.authorizationManager.spaceliftApiKeyEndpoint}`);
+            core.exportVariable('SPACELIFT_API_KEY_ENDPOINT', `https://${this.config.spaceliftApiKeyEndpoint}`);
             // Log the SPACELIFT_KEY_ID environment variable
             if (process.env.SPACELIFT_KEY_ID) {
                 core.info(`SPACELIFT_API_KEY_ID: ${process.env.SPACELIFT_KEY_ID}`);
@@ -1644,7 +1645,7 @@ class TerraformManager {
             const credentialsContent = {
                 credentials: {
                     'spacelift.io': {
-                        token: this.token,
+                        token: this.config.spaceliftModuleToken,
                     },
                 },
             };

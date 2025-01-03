@@ -27,7 +27,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const terraformManager_1 = __importDefault(require("../terraformManager"));
-const config_1 = __importDefault(require("../../config/config"));
 const core = __importStar(require("@actions/core"));
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
@@ -36,9 +35,7 @@ const util_1 = require("util");
 const execAsync = (0, util_1.promisify)(child_process_1.exec);
 class TerraformCliManager extends terraformManager_1.default {
     constructor() {
-        const config = config_1.default.getInstance();
-        super(config.spaceliftModuleToken);
-        this.config = config;
+        super();
         this.initializeTerraform();
     }
     /**

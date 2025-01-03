@@ -9,12 +9,8 @@ import { promisify } from 'util';
 const execAsync = promisify(exec);
 
 class TerraformCliManager extends TerraformManager {
-  private config: Config;
-
   constructor() {
-    const config = Config.getInstance();
-    super(config.spaceliftModuleToken);
-    this.config = config;
+    super();
     this.initializeTerraform();
   }
 

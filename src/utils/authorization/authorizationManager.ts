@@ -1,36 +1,23 @@
 import axios from 'axios';
 import * as core from '@actions/core';
+import Config from '../config/config';
 
 export class AuthorizationManager {
-    private actionsIdTokenRequestToken: string;
-    private actionsIdTokenRequestUrl: string;
-    private apiKeyId: string;
+    private config: Config;
+    private oidcToken: string | null = null;
+    private oidcTokenExpiration: number | null = null;
+    private bearerToken: string | null = null;
+    private bearerTokenExpiration: number | null = null;
 
-    protected oidcToken: string | null = null;
-    protected oidcTokenExpiration: number | null = null;
-
-    protected bearerToken: string | null = null;
-    protected bearerTokenExpiration: number | null = null;
-
-    public spaceliftApiKeyEndpoint: string;
-
-    constructor(apiKeyEndpoint?: string) {
-        this.actionsIdTokenRequestToken = process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN || '';
-        this.actionsIdTokenRequestUrl = process.env.ACTIONS_ID_TOKEN_REQUEST_URL || '';
-    
-        // Use the apiKeyEndpoint parameter if provided, otherwise fallback to the environment variable
-        this.spaceliftApiKeyEndpoint = apiKeyEndpoint && apiKeyEndpoint.trim() !== ''
-            ? apiKeyEndpoint
-            : process.env.SPACELIFT_API_KEY_ENDPOINT || '';
-    
-        this.apiKeyId = process.env.SPACELIFT_KEY_ID || '';
-    }    
+    constructor() {
+        this.config = Config.getInstance();
+    }
 
     private async generateOidcToken(): Promise<void> {
         try {
             core.info('Generating OIDC token...');
-            const response = await axios.get(`${this.actionsIdTokenRequestUrl}&audience=${this.spaceliftApiKeyEndpoint}`, {
-                headers: { Authorization: `Bearer ${this.actionsIdTokenRequestToken}` }
+            const response = await axios.get(`${this.config.actionsIdTokenRequestUrl}&audience=${this.config.spaceliftApiKeyEndpoint}`, {
+                headers: { Authorization: `Bearer ${this.config.actionsIdTokenRequestToken}` }
             });
 
             this.oidcToken = response.data.value;
@@ -44,7 +31,7 @@ export class AuthorizationManager {
         }
     }
 
-    protected async ensureValidOidcToken(): Promise<void> {
+    private async ensureValidOidcToken(): Promise<void> {
         if (!this.oidcToken || (this.oidcTokenExpiration && Date.now() >= this.oidcTokenExpiration)) {
             await this.generateOidcToken();
         }
@@ -59,7 +46,7 @@ export class AuthorizationManager {
                 const query = {
                     query: `
                         mutation {
-                            apiKeyUser(id: "${this.apiKeyId}", secret: "${this.oidcToken}") {
+                            apiKeyUser(id: "${this.config.apiKeyId}", secret: "${this.oidcToken}") {
                                 jwt
                                 validUntil
                             }
@@ -67,25 +54,25 @@ export class AuthorizationManager {
                     `
                 };
                 const response = await axios.post(
-                    `https://${this.spaceliftApiKeyEndpoint}/graphql`,
+                    `https://${this.config.spaceliftApiKeyEndpoint}/graphql`,
                     query,
                     {
                         headers: { 'Content-Type': 'application/json' }
                     }
                 );
-    
+
                 core.info(`GraphQL Response: ${JSON.stringify(response.data)}`);
-    
+
                 const user = response.data?.data?.apiKeyUser;
-    
+
                 if (!user?.jwt) {
                     throw new Error('JWT token not found in response');
                 }
-    
+
                 this.bearerToken = user.jwt;
                 const validUntil = user.validUntil || Math.floor(Date.now() / 1000) + 3600;
                 this.bearerTokenExpiration = validUntil * 1000;
-    
+
                 core.info(`Bearer token generated. Expiration time: ${new Date(this.bearerTokenExpiration).toISOString()}`);
             } catch (error) {
                 const errorMessage = this.getErrorMessage(error);
@@ -98,11 +85,11 @@ export class AuthorizationManager {
                 }
             }
         };
-    
-        await retryOperation(1);
-    }    
 
-    protected async ensureValidBearerToken(): Promise<void> {
+        await retryOperation(1);
+    }
+
+    private async ensureValidBearerToken(): Promise<void> {
         if (!this.bearerToken || (this.bearerTokenExpiration && Date.now() >= this.bearerTokenExpiration)) {
             await this.generateBearerToken();
         }
@@ -153,7 +140,7 @@ export class AuthorizationManager {
         }
         // Handle unknown types
         return typeof error === 'string' ? error : 'An unknown error occurred';
-    }    
+    }
 }
 
 export default AuthorizationManager;

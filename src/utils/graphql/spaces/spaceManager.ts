@@ -3,17 +3,13 @@ import Config from '../../config/config';
 import * as core from '@actions/core';
 
 class SpaceManager extends GraphQLManager {
-  private config: Config;
-
   constructor() {
     super();
-    this.config = Config.getInstance();
   }
 
   // Method to create service space with clear distinction for existing space
   async createServiceSpace(): Promise<string> {
-    const { labelPrefix, env, zone, serviceName } = this.config;
-    const label = `${labelPrefix}:${env}:${zone}:${serviceName}`;
+    const label = `${this.config.labelPrefix}:${this.config.env}:${this.config.zone}:${this.config.serviceName}`;
     const labelParts = label.split(':');
 
     let parentId: string | undefined = undefined;
