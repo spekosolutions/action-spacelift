@@ -22,26 +22,48 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.main = void 0;
 const core = __importStar(require("@actions/core"));
 const run_1 = require("./utils/run");
 const spacectl_1 = require("./commands/spacectl");
-// Define the main function correctly
+const terraform_1 = require("./commands/terraform");
+const config_1 = __importDefault(require("./utils/config/config"));
 const main = async () => {
     try {
-        const binaryFolder = await (0, spacectl_1.installAndGetFolder)();
-        core.addPath(binaryFolder);
-        core.info("Added spacectl to PATH: " + binaryFolder);
-        await (0, run_1.run)({
-            command: core.getInput('command', { required: true }),
-            region: core.getInput('region', { required: true }),
-            env: core.getInput('env', { required: true }),
-            integration_name: core.getInput('integration_name', { required: true }),
-            service_name: core.getInput('service_name', { required: true }),
-            label_prefix: core.getInput('label_prefix', { required: true }),
-            label_postfix: core.getInput('label_postfix', { required: true }),
-        });
+        // Initialize configuration
+        const config = config_1.default.getInstance();
+        // Install Spacelift CLI and add to PATH
+        const binarySpaceliftFolder = await (0, spacectl_1.installSpaceliftAndGetFolder)();
+        core.addPath(binarySpaceliftFolder);
+        core.info(`Added spacectl to PATH: ${binarySpaceliftFolder}`);
+        // Install Terraform CLI and add to PATH
+        (async () => {
+            try {
+                const binaryTerraformFolder = await (0, terraform_1.installTerraformAndGetFolder)();
+                core.addPath(binaryTerraformFolder);
+                core.info(`Added terraform to PATH: ${binaryTerraformFolder}`);
+            }
+            catch (error) {
+                core.error(`Failed to install Terraform: ${error.message}`);
+            }
+        })();
+        // Use the Config instance to retrieve settings
+        core.info(`Running command: ${config.command}`);
+        core.info(`Region: ${config.region}`);
+        core.info(`Zone: ${config.zone}`);
+        core.info(`Environment: ${config.env}`);
+        core.info(`Service Name: ${config.serviceName}`);
+        core.info(`Label Prefix: ${config.labelPrefix}`);
+        core.info(`Label Suffix: ${config.labelSuffix}`);
+        core.info(`Spacelift Module Token: ${config.spaceliftModuleToken}`);
+        core.info(`Environment Context: ${config.envContext}`);
+        core.info(`Parsed Environment Variables: ${JSON.stringify(config.envVars)}`);
+        // Pass configuration to the run function
+        await (0, run_1.run)();
     }
     catch (e) {
         core.setFailed(e.message);

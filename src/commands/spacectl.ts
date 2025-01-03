@@ -7,7 +7,7 @@ import path from "path";
 const octokit = github.getOctokit(core.getInput("github-token"));
 const downloadURL = "https://github.com/spacelift-io/spacectl/releases/download";
 
-async function installAndGetFolder(): Promise<string> {
+async function installSpaceliftAndGetFolder(): Promise<string> {
   const version = await getVersion();
   const arch = getArchitecture();
   core.setOutput("version", version);
@@ -56,4 +56,4 @@ function getArchitecture(): string {
   }
 }
 
-export { installAndGetFolder };
+export { installSpaceliftAndGetFolder };

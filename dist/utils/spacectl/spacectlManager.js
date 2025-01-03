@@ -28,10 +28,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const core = __importStar(require("@actions/core"));
 const authorizationManager_1 = __importDefault(require("../authorization/authorizationManager"));
+const config_1 = __importDefault(require("../config/config"));
 // Parent class to manage common Spacelift environment setup
 class SpacectlManager {
     constructor() {
         this.authorizationManager = new authorizationManager_1.default(); // Initialize the AuthorizationManager
+        this.config = config_1.default.getInstance();
     }
     // Set environment variables for Spacelift
     async setEnvironmentVariables() {
@@ -41,7 +43,7 @@ class SpacectlManager {
             core.info('Setting OIDC_TOKEN environment variable...');
             core.exportVariable('OIDC_TOKEN', await this.authorizationManager.oidcTokenAsync);
             core.info('Setting SPACELIFT_API_KEY_ENDPOINT environment variable...');
-            core.exportVariable('SPACELIFT_API_KEY_ENDPOINT', `https://${this.authorizationManager.spaceliftApiKeyEndpoint}`);
+            core.exportVariable('SPACELIFT_API_KEY_ENDPOINT', `https://${this.config.spaceliftApiKeyEndpoint}`);
             // Log the SPACELIFT_KEY_ID environment variable
             if (process.env.SPACELIFT_KEY_ID) {
                 core.info(`SPACELIFT_API_KEY_ID: ${process.env.SPACELIFT_KEY_ID}`);

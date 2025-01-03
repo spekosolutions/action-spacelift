@@ -24,13 +24,27 @@ inputs:
     description: "Label prefix"
     required: false
     default: "aws:services"
-  label_postfix:
+  label_suffix:
     description: "Label postfix"
     required: true
   github-token:
     description: "GitHub token"
     required: false
     default: ${{ github.token }}
+  env_vars:
+    description: "Environment variables"
+    required: false
+    default: "{}"
+  zone:
+    description: "Environment variables"
+    required: false
+    default: "{}"
+  spacelift_module_token:
+    description: "SpaceLift module token"
+    required: true
+  env_context:
+    description: "Environment context"
+    required: true
 
 outputs:
   outputs: 

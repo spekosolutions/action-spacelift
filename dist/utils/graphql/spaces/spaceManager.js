@@ -33,9 +33,8 @@ class SpaceManager extends graphQLManager_1.default {
         super();
     }
     // Method to create service space with clear distinction for existing space
-    async createServiceSpace(inputs) {
-        const { label_prefix, env, region, service_name, label_postfix } = inputs;
-        const label = `${label_prefix}:${env}:${region}:${service_name}:${label_postfix}`;
+    async createServiceSpace() {
+        const label = `${this.config.labelPrefix}:${this.config.env}:${this.config.zone}:${this.config.serviceName}`;
         const labelParts = label.split(':');
         let parentId = undefined;
         let isNewSpaceCreated = false; // Flag to check if new space was created
@@ -107,11 +106,9 @@ class SpaceManager extends graphQLManager_1.default {
     // Method to find space by label with logging and error handling
     async findSpaceByLabel(label) {
         try {
-            core.info(`Fidning space with label: ${label}`);
+            core.info(`Finding space with label: ${label}`);
             // Query spaces
             const spaces = await this.querySpaces();
-            //   // Log the spaces result for debugging
-            //   core.info(`Queried spaces: ${JSON.stringify(spaces, null, 2)}`)
             // Find space that matches the label
             const foundSpace = spaces.find((space) => space.labels.includes(label)) || null;
             // Log the result of the space found

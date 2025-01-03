@@ -31,7 +31,7 @@ const core = __importStar(require("@actions/core"));
 const child_process_1 = require("child_process");
 const util_1 = __importDefault(require("util"));
 // Promisify exec to use async/await
-const execAsync = util_1.default.promisify(child_process_1.exec); // Define execAsync using util.promisify
+const execAsync = util_1.default.promisify(child_process_1.exec);
 // Child class extending SpaceliftManager to handle stack operations
 class StackManager extends spacectlManager_1.default {
     constructor() {
@@ -79,6 +79,33 @@ class StackManager extends spacectlManager_1.default {
         catch (error) {
             core.setFailed(`Failed to get stack outputs: ${error.message}`);
             throw error;
+        }
+    }
+    // Method to check if a stack exists
+    async doesStackExist(stackIdOrName) {
+        try {
+            core.info(`Checking if stack '${stackIdOrName}' exists...`);
+            // Run the spacectl command to list stacks and filter by stack ID
+            const commandToRun = `spacectl stack list --search ${stackIdOrName} --output json`;
+            core.info(`Executing command: ${commandToRun}`);
+            const { stdout } = await execAsync(commandToRun);
+            // Log raw output for debugging
+            core.info(`Raw command output: ${stdout}`);
+            // Parse the JSON output to check if the stack exists
+            const stacks = JSON.parse(stdout);
+            core.info(`Parsed stacks: ${JSON.stringify(stacks)}`);
+            if (stacks.length > 0) {
+                core.info(`Stack '${stackIdOrName}' exists.`);
+                return true;
+            }
+            else {
+                core.info(`Stack '${stackIdOrName}' does not exist.`);
+                return false;
+            }
+        }
+        catch (error) {
+            core.error(`Error checking if stack exists: ${error.message}`);
+            return false; // Default to false on error
         }
     }
 }

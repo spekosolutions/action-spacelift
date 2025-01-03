@@ -1,12 +1,14 @@
 import axios from 'axios'
 import * as core from '@actions/core'
 import AuthorizationManager from '../authorization/authorizationManager';
+import Config from '../config/config';
 
 class GraphQLManager {
+  protected config: Config;
   private authorizationManager: AuthorizationManager;
 
-
   constructor() {
+    this.config = Config.getInstance();
     this.authorizationManager = new AuthorizationManager();  // Initialize the AuthorizationManager
   }
   
@@ -14,7 +16,7 @@ class GraphQLManager {
   protected async sendRequest(mutation: any): Promise<any> {
     try {
       const bearerToken = await this.authorizationManager.bearerTokenAsync;  // Retrieve Bearer token
-      const response = await axios.post(`https://${this.authorizationManager.spaceliftApiKeyEndpoint}/graphql`, mutation, {
+      const response = await axios.post(`https://${this.config.spaceliftApiKeyEndpoint}/graphql`, mutation, {
         headers: {
           Authorization: `Bearer ${bearerToken}`,
           'Content-Type': 'application/json',

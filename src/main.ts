@@ -1,30 +1,51 @@
 import * as core from '@actions/core';
 import { run } from './utils/run';
-import { installAndGetFolder } from './commands/spacectl';
+import { installSpaceliftAndGetFolder } from './commands/spacectl';
+import { installTerraformAndGetFolder } from './commands/terraform';
+import Config from './utils/config/config';
 
-// Define the main function correctly
 const main = async (): Promise<void> => {
   try {
-    const binaryFolder = await installAndGetFolder();
-    core.addPath(binaryFolder);
-    core.info("Added spacectl to PATH: " + binaryFolder);
+    // Initialize configuration
+    const config = Config.getInstance();
 
-    await run({
-      command: core.getInput('command', { required: true }),
-      region: core.getInput('region', { required: true }),
-      env: core.getInput('env', { required: true }),
-      integration_name: core.getInput('integration_name', { required: true }),
-      service_name: core.getInput('service_name', { required: true }),
-      label_prefix: core.getInput('label_prefix', { required: true }),
-      label_postfix: core.getInput('label_postfix', { required: true }),
-    });
+    // Install Spacelift CLI and add to PATH
+    const binarySpaceliftFolder = await installSpaceliftAndGetFolder();
+    core.addPath(binarySpaceliftFolder);
+    core.info(`Added spacectl to PATH: ${binarySpaceliftFolder}`);
+
+    // Install Terraform CLI and add to PATH
+    (async () => {
+      try {
+        const binaryTerraformFolder = await installTerraformAndGetFolder();
+        core.addPath(binaryTerraformFolder);
+        core.info(`Added terraform to PATH: ${binaryTerraformFolder}`);
+      } catch (error) {
+        core.error(`Failed to install Terraform: ${(error as Error).message}`);
+      }
+    })();
+
+    // Use the Config instance to retrieve settings
+    core.info(`Running command: ${config.command}`);
+    core.info(`Region: ${config.region}`);
+    core.info(`Zone: ${config.zone}`);
+    core.info(`Environment: ${config.env}`);
+    core.info(`Service Name: ${config.serviceName}`);
+    core.info(`Label Prefix: ${config.labelPrefix}`);
+    core.info(`Label Suffix: ${config.labelSuffix}`);
+    core.info(`Spacelift Module Token: ${config.spaceliftModuleToken}`);
+    core.info(`Environment Context: ${config.envContext}`);
+    core.info(`Parsed Environment Variables: ${JSON.stringify(config.envVars)}`);
+
+    // Pass configuration to the run function
+    await run();
   } catch (e) {
     core.setFailed((e as Error).message);
     console.error(e);
   }
 };
 
-// Export the main function so it can be imported in test files
+// Export the main function for testing purposes
 export { main };
 
 // Ensure proper handling of errors in the async context

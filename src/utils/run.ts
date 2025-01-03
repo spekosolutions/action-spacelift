@@ -1,86 +1,112 @@
-import * as core from '@actions/core'
-import ContextManager from './graphql/contexts/contextManager'
-import SpaceManager from './graphql/spaces/spaceManager'
+import * as core from '@actions/core';
+import SpaceManager from './graphql/spaces/spaceManager';
 import GraphQLStackManager from './graphql/stacks/stackManager';
-import SpacectlStackManager from './spacectl/stacks/stackManager';
+import TerraformCliManager from './terraform/cli/cliManager';
+import StackManager from './spacectl/stacks/stackManager';
+import Config from './config/config';
 
-type Inputs = {
-  command: string
-  region: string
-  env: string
-  integration_name: string,
-  service_name: string
-  label_prefix: string
-  label_postfix: string
-}
+// Initialize Config globally
+const config = Config.getInstance();
 
-// Helper to generate a unique tag for the stack
-const generateUniqueTag = (): string => {
-  return Math.random().toString(36).substring(7)
-}
+const graphqlStackManager = new GraphQLStackManager();
+const spacectlStackManager = new StackManager();
+const terraformCliManager = new TerraformCliManager();
 
-export const run = async (inputs: Inputs): Promise<void> => {
+/**
+ * Helper to parse environment variables from raw input
+ */
+const parseEnvVars = (): Record<string, any> => {
   try {
-    // Destructure the necessary fields from inputs
-    const { command, label_postfix, service_name, env, integration_name, region } = inputs
-
-    // Construct stack name from inputs
-    const stackName = `${label_postfix}-${service_name}-${env}-${region}`
-    core.info(`Using stack name: ${stackName}`)
-
-    // Generate a unique tag
-    const uniqueTag = generateUniqueTag()
-    core.info(`Generated unique tag: ${uniqueTag}`)
-
-    if (command.includes('deploy')) {
-      // Declare the spaceId variable to be used later
-      let spaceId: string
-
-      // Create service space and upsert the stack
-      const spaceManager = new SpaceManager()
-
-      try {
-        spaceId = await spaceManager.createServiceSpace(inputs)
-      } catch (error) {
-        console.error('Error creating service space:', error)
-        throw error
-      }
-
-      try {
-        // Initialize the ContextManager with required values
-        const contextManager = new ContextManager();
-        
-        // Call createOrUpdateContext without passing yamlFilePath or contextName
-        const result = await contextManager.createOrUpdateContext(spaceId, inputs);
-        console.log('Context result:', result);
-      } catch (error) {
-        console.error(`Failed to manage context: ${(error as Error).message}`);
-      }
-
-      try {
-        // Initialize the StackManager with the Spacelift URL and bearer token
-        const graphqlStackManager = new GraphQLStackManager();
-    
-        // Call the upsertStack method to create or update the stack
-        await graphqlStackManager.upsertStack(stackName, spaceId, integration_name, inputs);
-    
-        console.log(`Stack "${stackName}" was successfully upserted.`);
-      } catch (error) {
-        console.error(`Failed to upsert stack: ${(error as Error).message}`);
-      }
-    }
-
-    // Run command on stack
-    try {
-      const spacectlStackManager = new SpacectlStackManager();
-      await spacectlStackManager.runCommand(stackName, command);
-      await spacectlStackManager.getStackOutputs(stackName);
-    } catch (error) {
-        core.setFailed(`An error occurred: ${(error as Error).message}`);
-        console.error(error);
-    }
-    
+    return {
+      ...config.envVars,
+      env: config.env,
+      region: config.region,
+      provider_region: config.region,
+      zone: config.zone,
+    };
   } catch (error) {
-    core.setFailed(`Action failed with error: ${(error as Error).message || error}`)
+    core.setFailed(`Failed to parse env_vars JSON: ${(error as Error).message}`);
+    throw error;
   }
-}
+};
+
+/**
+ * Create or manage spaces
+ */
+const manageSpace = async (): Promise<{ parentSpaceId: string }> => {
+  const spaceManager = new SpaceManager();
+  try {
+    const parentSpaceId = await spaceManager.createServiceSpace();
+    config.setParentSpaceId(parentSpaceId);
+    core.info(`Using Parent Space with ID: ${config.parentSpaceId}`);
+    return { parentSpaceId: config.parentSpaceId ?? '' };
+  } catch (error) {
+    core.error('Error creating service space:');
+    throw error;
+  }
+};
+
+/**
+ * Create or manage stacks based on Terraform state
+ */
+/**
+ * Create or manage stacks based on Terraform state
+ */
+const manageStack = async (): Promise<void> => {
+  try {
+    await terraformCliManager.initialize();
+
+    const stackExists = await spacectlStackManager.doesStackExist(config.stackName);
+
+    core.info(`Stack existence check returned: ${stackExists}`);
+
+    if (!stackExists) {
+      core.info(`Stack "${config.stackName}" does not exist. Initializing and applying Terraform... with: ${config.getStackVars()}`);
+      await terraformCliManager.runCommandWithLogs(`terraform apply --auto-approve ${config.getStackVars()}`);
+      core.info(`Stack "${config.stackName}" created successfully.`);
+      core.info(`Running first-time deployment on stack "${config.stackName}"`);
+      await spacectlStackManager.runCommand(config.stackName, `deploy --tail --auto-confirm`);
+      await spacectlStackManager.getStackOutputs(config.stackName);
+    } else {
+      core.info(`Stack "${config.stackName}" already exists.`);
+      core.info('Running additional Spacelift commands on stack...');
+      if (config.command.startsWith('terraform')) {
+        await terraformCliManager.runCommandWithLogs(`${config.command} ${config.getStackVars()}`);
+      } else if (config.command.startsWith('outputs')) {
+        await spacectlStackManager.getStackOutputs(config.stackName);
+      } else {
+        await spacectlStackManager.runCommand(config.stackName, config.command);
+      }
+    }
+  } catch (error) {
+    core.error(`Error managing stack: ${(error as Error).message}`);
+    throw error;
+  }
+};
+
+/**
+ * Main action logic
+ */
+export const run = async (): Promise<void> => {
+  try {
+    const githubSha = config.githubSha;
+    if (!githubSha) {
+      throw new Error('GITHUB_SHA environment variable is not set.');
+    }
+
+    core.info(`Using stack name: ${config.stackName}`);
+
+    // Parse environment variables
+    const envVars = parseEnvVars();
+    core.info(`Parsed env_vars: ${JSON.stringify(envVars)}`);
+
+    // Manage spaces before proceeding with any operations
+    core.info('Creating or managing space...');
+    await manageSpace();
+
+    // Manage stacks based on Terraform state
+    await manageStack();
+  } catch (error) {
+    core.setFailed(`Action failed with error: ${(error as Error).message || error}`);
+  }
+};

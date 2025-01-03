@@ -1,12 +1,15 @@
 import * as core from '@actions/core'
 import AuthorizationManager from '../authorization/authorizationManager';
+import Config from '../config/config';
 
 // Parent class to manage common Spacelift environment setup
 class SpacectlManager {
   private authorizationManager: AuthorizationManager;
+  private config: Config;
 
   constructor() {
     this.authorizationManager = new AuthorizationManager();  // Initialize the AuthorizationManager
+    this.config = Config.getInstance();
   }
 
   // Set environment variables for Spacelift
@@ -19,7 +22,7 @@ class SpacectlManager {
       core.exportVariable('OIDC_TOKEN', await this.authorizationManager.oidcTokenAsync)
 
       core.info('Setting SPACELIFT_API_KEY_ENDPOINT environment variable...')
-      core.exportVariable('SPACELIFT_API_KEY_ENDPOINT', `https://${this.authorizationManager.spaceliftApiKeyEndpoint}`)
+      core.exportVariable('SPACELIFT_API_KEY_ENDPOINT', `https://${this.config.spaceliftApiKeyEndpoint}`)
 
       // Log the SPACELIFT_KEY_ID environment variable
       if (process.env.SPACELIFT_KEY_ID) {

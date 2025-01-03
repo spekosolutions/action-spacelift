@@ -29,15 +29,17 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const axios_1 = __importDefault(require("axios"));
 const core = __importStar(require("@actions/core"));
 const authorizationManager_1 = __importDefault(require("../authorization/authorizationManager"));
+const config_1 = __importDefault(require("../config/config"));
 class GraphQLManager {
     constructor() {
+        this.config = config_1.default.getInstance();
         this.authorizationManager = new authorizationManager_1.default(); // Initialize the AuthorizationManager
     }
     // Send GraphQL request with Bearer token
     async sendRequest(mutation) {
         try {
             const bearerToken = await this.authorizationManager.bearerTokenAsync; // Retrieve Bearer token
-            const response = await axios_1.default.post(`https://${this.authorizationManager.spaceliftApiKeyEndpoint}/graphql`, mutation, {
+            const response = await axios_1.default.post(`https://${this.config.spaceliftApiKeyEndpoint}/graphql`, mutation, {
                 headers: {
                     Authorization: `Bearer ${bearerToken}`,
                     'Content-Type': 'application/json',
