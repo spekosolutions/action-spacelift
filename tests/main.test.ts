@@ -4,6 +4,7 @@ import * as github from '@actions/github';
 import { installSpaceliftAndGetFolder } from '../src/commands/spacectl';
 import { installTerraformAndGetFolder } from '../src/commands/terraform';
 import Config from '../src/utils/config/config';
+import AuthorizationManager from '../src/utils/authorization/authorizationManager';
 
 jest.mock('@actions/core');
 jest.mock('@actions/github');
@@ -11,12 +12,23 @@ jest.mock('../src/commands/spacectl');
 jest.mock('../src/commands/terraform');
 jest.mock('../src/utils/config/config');
 
+// Mock AuthorizationManager completely
+jest.mock('../src/utils/authorization/authorizationManager', () => {
+  return jest.fn().mockImplementation(() => ({
+    ensureValidOidcToken: jest.fn().mockResolvedValue(undefined),
+    ensureValidBearerToken: jest.fn().mockResolvedValue(undefined),
+    oidcTokenAsync: Promise.resolve('mock-oidc-token'),
+    bearerTokenAsync: Promise.resolve('mock-bearer-token'),
+  }));
+});
+
 describe('Main Action', () => {
   let consoleErrorSpy: jest.SpyInstance;
 
   beforeEach(() => {
     jest.resetAllMocks();
     consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
     jest.spyOn(core, 'getInput').mockImplementation((name: string) => {
       const inputs: Record<string, string> = {
         command: 'apply',
@@ -32,6 +44,12 @@ describe('Main Action', () => {
       };
       return inputs[name] || '';
     });
+
+    process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN = 'mock-token';
+    process.env.ACTIONS_ID_TOKEN_REQUEST_URL = 'https://mock-token-url';
+    process.env.SPACELIFT_API_KEY_ENDPOINT = 'mock-endpoint';
+    process.env.SPACELIFT_KEY_ID = 'mock-key-id';
+
     (github.getOctokit as jest.Mock).mockReturnValue({
       rest: {
         repos: {
@@ -43,6 +61,9 @@ describe('Main Action', () => {
         },
       },
     });
+
+    (installSpaceliftAndGetFolder as jest.Mock).mockResolvedValue('/mocked/spacectl/folder');
+    (installTerraformAndGetFolder as jest.Mock).mockResolvedValue('/mocked/terraform/folder');
   });
 
   afterEach(() => {
@@ -50,9 +71,6 @@ describe('Main Action', () => {
   });
 
   test('main runs successfully', async () => {
-    (installSpaceliftAndGetFolder as jest.Mock).mockResolvedValue('/mocked/spacectl/folder');
-    (installTerraformAndGetFolder as jest.Mock).mockResolvedValue('/mocked/terraform/folder');
-
     await expect(main()).resolves.toBeUndefined();
 
     expect(core.addPath).toHaveBeenCalledWith('/mocked/spacectl/folder');
@@ -63,7 +81,9 @@ describe('Main Action', () => {
 
   test('main fails if installSpaceliftAndGetFolder throws an error', async () => {
     (installSpaceliftAndGetFolder as jest.Mock).mockRejectedValue(new Error('Failed to install spacectl'));
+
     await main();
+
     expect(core.setFailed).toHaveBeenCalledWith('Failed to install spacectl');
   });
 });
