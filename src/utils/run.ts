@@ -36,7 +36,8 @@ const parseEnvVars = (): Record<string, any> => {
 const manageSpace = async (): Promise<{ parentSpaceId: string }> => {
   const spaceManager = new SpaceManager();
   try {
-    config.setParentSpaceId(await spaceManager.createServiceSpace());
+    const parentSpaceId = await spaceManager.createServiceSpace();
+    config.setParentSpaceId(parentSpaceId);
     core.info(`Using Parent Space with ID: ${config.setParentSpaceId}`);
     return { parentSpaceId: config.parentSpaceId ?? '' };
   } catch (error) {
