@@ -36,9 +36,9 @@ const parseEnvVars = (): Record<string, any> => {
 const manageSpace = async (): Promise<{ parentSpaceId: string }> => {
   const spaceManager = new SpaceManager();
   try {
-    const parentSpaceId = await spaceManager.createServiceSpace();
-    core.info(`Using Parent Space with ID: ${parentSpaceId}`);
-    return { parentSpaceId };
+    config.setParentSpaceId(await spaceManager.createServiceSpace());
+    core.info(`Using Parent Space with ID: ${config.setParentSpaceId}`);
+    return { parentSpaceId: config.parentSpaceId ?? '' };
   } catch (error) {
     core.error('Error creating service space:');
     throw error;
@@ -55,14 +55,13 @@ const manageStack = async (): Promise<void> => {
   try {
     await terraformCliManager.initialize();
 
-    const stackVars = `-var 'parent_space_id=${config.parentSpaceId}' -var 'application=${config.serviceName}' -var 'env=${config.env}' -var 'zone=${config.zone}' -var 'region=${config.region}' -var 'env_context=${config.envContext}'`;
     const stackExists = await spacectlStackManager.doesStackExist(config.stackName);
 
     core.info(`Stack existence check returned: ${stackExists}`);
 
     if (!stackExists) {
       core.info(`Stack "${config.stackName}" does not exist. Initializing and applying Terraform...`);
-      await terraformCliManager.runCommandWithLogs(`terraform apply --auto-approve ${stackVars}`);
+      await terraformCliManager.runCommandWithLogs(`terraform apply --auto-approve ${config.getStackVars()}`);
       core.info(`Stack "${config.stackName}" created successfully.`);
       core.info(`Running first-time deployment on stack "${config.stackName}"`);
       await spacectlStackManager.runCommand(config.stackName, `deploy --tail --auto-confirm`);
@@ -70,7 +69,7 @@ const manageStack = async (): Promise<void> => {
       core.info(`Stack "${config.stackName}" already exists.`);
       core.info('Running additional Spacelift commands on stack...');
       if (config.command.startsWith('terraform')) {
-        await terraformCliManager.runCommandWithLogs(`${config.command} ${stackVars}`);
+        await terraformCliManager.runCommandWithLogs(`${config.command} ${config.getStackVars()}`);
       } else {
         await spacectlStackManager.runCommand(config.stackName, config.command);
       }
