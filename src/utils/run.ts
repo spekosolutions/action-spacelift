@@ -69,7 +69,7 @@ const manageStack = async (): Promise<void> => {
       core.info(`State for stack "${config.stackName}" already exists.`);
       core.info('Running additional Spacelift commands on stack...');
       if (config.command.startsWith('terraform')) {
-        await terraformCliManager.runCommandWithLogs(config.command);
+        await terraformCliManager.runCommandWithLogs(`${config.command} ${stackVars}`);
       } else {
         await spacectlStackManager.runCommand(config.stackName, `deploy --tail --auto-confirm`);
       }
