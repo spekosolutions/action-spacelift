@@ -1173,7 +1173,7 @@ const manageStack = async () => {
         await terraformCliManager.initialize(); // Explicit initialization
         const stateExists = await terraformCliManager.checkTerraformStateExists();
         const stackVars = `-var 'parent_space_id=${config.parentSpaceId}' -var 'application=${config.serviceName}' -var 'env=${config.env}' -var 'zone=${config.zone}' -var 'region=${config.region}' -var 'env_context=${config.envContext}'`;
-        if (!stateExists) {
+        if (!spacectlStackManager.doesStackExist(config.stackName) && !stateExists) {
             core.info(`State for stack "${config.stackName}" does not exist. Initializing and applying Terraform...`);
             await terraformCliManager.runCommandWithLogs(`terraform apply --auto-approve ${stackVars}`);
             core.info(`Stack "${config.stackName}" created successfully.`);
@@ -1340,7 +1340,7 @@ const core = __importStar(__nccwpck_require__(9093));
 const child_process_1 = __nccwpck_require__(2081);
 const util_1 = __importDefault(__nccwpck_require__(3837));
 // Promisify exec to use async/await
-const execAsync = util_1.default.promisify(child_process_1.exec); // Define execAsync using util.promisify
+const execAsync = util_1.default.promisify(child_process_1.exec);
 // Child class extending SpaceliftManager to handle stack operations
 class StackManager extends spacectlManager_1.default {
     constructor() {
@@ -1388,6 +1388,29 @@ class StackManager extends spacectlManager_1.default {
         catch (error) {
             core.setFailed(`Failed to get stack outputs: ${error.message}`);
             throw error;
+        }
+    }
+    // Method to check if a stack exists
+    async doesStackExist(stackIdOrName) {
+        try {
+            core.info(`Checking if stack '${stackIdOrName}' exists...`);
+            // Run the spacectl command to list stacks and filter by stack ID
+            const commandToRun = `spacectl stack list --search ${stackIdOrName} --output json`;
+            const { stdout } = await execAsync(commandToRun);
+            // Parse the JSON output to check if the stack exists
+            const stacks = JSON.parse(stdout);
+            if (stacks.length > 0) {
+                core.info(`Stack '${stackIdOrName}' exists.`);
+                return true;
+            }
+            else {
+                core.info(`Stack '${stackIdOrName}' does not exist.`);
+                return false;
+            }
+        }
+        catch (error) {
+            core.error(`Error checking if stack exists: ${error.message}`);
+            return false;
         }
     }
 }
