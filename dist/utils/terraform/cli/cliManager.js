@@ -36,12 +36,16 @@ const execAsync = (0, util_1.promisify)(child_process_1.exec);
 class TerraformCliManager extends terraformManager_1.default {
     constructor() {
         super();
-        this.initializeTerraform();
+        this.initialized = false;
     }
     /**
-     * Initialize Terraform backend if not already initialized
+     * Explicitly initialize Terraform backend if not already initialized
      */
-    async initializeTerraform() {
+    async initialize() {
+        if (this.initialized) {
+            core.info('TerraformCliManager is already initialized.');
+            return;
+        }
         try {
             core.info('Initializing Terraform to configure the backend...');
             const backendConfigPath = path.join(this.config.stackPath, 'state.tf');
@@ -51,6 +55,7 @@ class TerraformCliManager extends terraformManager_1.default {
             }
             await execAsync(`terraform init`, { cwd: this.config.stackPath });
             core.info('Terraform initialized successfully.');
+            this.initialized = true;
         }
         catch (error) {
             core.error(`Error initializing Terraform: ${error.message}`);

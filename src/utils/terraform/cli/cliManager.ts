@@ -9,15 +9,22 @@ import { promisify } from 'util';
 const execAsync = promisify(exec);
 
 class TerraformCliManager extends TerraformManager {
+  private initialized: boolean;
+
   constructor() {
     super();
-    this.initializeTerraform();
+    this.initialized = false;
   }
 
   /**
-   * Initialize Terraform backend if not already initialized
+   * Explicitly initialize Terraform backend if not already initialized
    */
-  private async initializeTerraform(): Promise<void> {
+  public async initialize(): Promise<void> {
+    if (this.initialized) {
+      core.info('TerraformCliManager is already initialized.');
+      return;
+    }
+
     try {
       core.info('Initializing Terraform to configure the backend...');
 
@@ -29,6 +36,7 @@ class TerraformCliManager extends TerraformManager {
 
       await execAsync(`terraform init`, { cwd: this.config.stackPath });
       core.info('Terraform initialized successfully.');
+      this.initialized = true;
     } catch (error) {
       core.error(`Error initializing Terraform: ${(error as Error).message}`);
       throw error;

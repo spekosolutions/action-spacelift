@@ -1165,8 +1165,12 @@ const manageSpace = async () => {
 /**
  * Create or manage stacks based on Terraform state
  */
+/**
+ * Create or manage stacks based on Terraform state
+ */
 const manageStack = async () => {
     try {
+        await terraformCliManager.initialize(); // Explicit initialization
         const stateExists = await terraformCliManager.checkTerraformStateExists();
         const stackVars = `-var 'parent_space_id=${config.parentSpaceId}' -var 'application=${config.serviceName}' -var 'env=${config.env}' -var 'zone=${config.zone}' -var 'region=${config.region}' -var 'env_context=${config.envContext}'`;
         if (!stateExists) {
@@ -1434,12 +1438,16 @@ const execAsync = (0, util_1.promisify)(child_process_1.exec);
 class TerraformCliManager extends terraformManager_1.default {
     constructor() {
         super();
-        this.initializeTerraform();
+        this.initialized = false;
     }
     /**
-     * Initialize Terraform backend if not already initialized
+     * Explicitly initialize Terraform backend if not already initialized
      */
-    async initializeTerraform() {
+    async initialize() {
+        if (this.initialized) {
+            core.info('TerraformCliManager is already initialized.');
+            return;
+        }
         try {
             core.info('Initializing Terraform to configure the backend...');
             const backendConfigPath = path.join(this.config.stackPath, 'state.tf');
@@ -1449,6 +1457,7 @@ class TerraformCliManager extends terraformManager_1.default {
             }
             await execAsync(`terraform init`, { cwd: this.config.stackPath });
             core.info('Terraform initialized successfully.');
+            this.initialized = true;
         }
         catch (error) {
             core.error(`Error initializing Terraform: ${error.message}`);

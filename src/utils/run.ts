@@ -48,8 +48,13 @@ const manageSpace = async (): Promise<{ parentSpaceId: string }> => {
 /**
  * Create or manage stacks based on Terraform state
  */
+/**
+ * Create or manage stacks based on Terraform state
+ */
 const manageStack = async (): Promise<void> => {
   try {
+    await terraformCliManager.initialize(); // Explicit initialization
+
     const stateExists = await terraformCliManager.checkTerraformStateExists();
 
     const stackVars = `-var 'parent_space_id=${config.parentSpaceId}' -var 'application=${config.serviceName}' -var 'env=${config.env}' -var 'zone=${config.zone}' -var 'region=${config.region}' -var 'env_context=${config.envContext}'`;
