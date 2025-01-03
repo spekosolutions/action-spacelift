@@ -1173,7 +1173,7 @@ const manageStack = async () => {
         await terraformCliManager.initialize(); // Explicit initialization
         const stateExists = await terraformCliManager.checkTerraformStateExists();
         const stackVars = `-var 'parent_space_id=${config.parentSpaceId}' -var 'application=${config.serviceName}' -var 'env=${config.env}' -var 'zone=${config.zone}' -var 'region=${config.region}' -var 'env_context=${config.envContext}'`;
-        if (!spacectlStackManager.doesStackExist(config.stackName) && !stateExists) {
+        if (!spacectlStackManager.doesStackExist(config.stackName)) {
             core.info(`State for stack "${config.stackName}" does not exist. Initializing and applying Terraform...`);
             await terraformCliManager.runCommandWithLogs(`terraform apply --auto-approve ${stackVars}`);
             core.info(`Stack "${config.stackName}" created successfully.`);
@@ -1187,7 +1187,7 @@ const manageStack = async () => {
                 await terraformCliManager.runCommandWithLogs(`${config.command} ${stackVars}`);
             }
             else {
-                await spacectlStackManager.runCommand(config.stackName, `deploy --tail --auto-confirm`);
+                await spacectlStackManager.runCommand(config.stackName, config.command);
             }
         }
     }
