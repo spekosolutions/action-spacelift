@@ -32,7 +32,6 @@ class Config {
         this.region = core.getInput('region', { required: true });
         this.zone = core.getInput('zone', { required: true });
         this.env = core.getInput('env', { required: true });
-        this.integrationName = core.getInput('integration_name', { required: true });
         this.serviceName = core.getInput('service_name', { required: true });
         this.labelPrefix = core.getInput('label_prefix', { required: false }) || 'aws:services';
         this.labelSuffix = core.getInput('label_suffix', { required: true });
@@ -40,7 +39,8 @@ class Config {
         this.envContext = core.getInput('env_context', { required: true });
         this.githubSha = process.env.GITHUB_SHA || '';
         this.stackName = `${this.labelSuffix}-${this.serviceName}-${this.env}-${this.zone}`;
-        this.stackPath = `./deployment/${this.labelSuffix}/stack`;
+        this.deploymentPath = core.getInput('deployment_path', { required: false }) || './deployment';
+        this.stackPath = `${this.deploymentPath}/${this.labelSuffix}/stack`;
         this.stack_bucket = `spacelift-stacks-${this.region}-${this.awsAccountId}`;
         this.stack_bucket_key = `${this.env}/${this.zone}/${this.serviceName}/${this.labelSuffix}/terraform.tfstate`;
         this.stack_dynamodb_table = `spacelift-stacks-${this.region}-${this.awsAccountId}`;

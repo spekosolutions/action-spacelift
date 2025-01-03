@@ -35,7 +35,7 @@ describe('Main Action', () => {
         region: 'us-east-1',
         zone: 'zone1',
         env: 'dev',
-        integration_name: 'integration',
+        deployment_path: 'deployment',
         service_name: 'test-service',
         label_prefix: 'prefix',
         label_postfix: 'postfix',

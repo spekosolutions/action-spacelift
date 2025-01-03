@@ -62,6 +62,7 @@ const main = async () => {
         core.info(`Spacelift Module Token: ${config.spaceliftModuleToken}`);
         core.info(`Environment Context: ${config.envContext}`);
         core.info(`Parsed Environment Variables: ${JSON.stringify(config.envVars)}`);
+        core.info(`Stack path: ${config.stackPath}`);
         // Pass configuration to the run function
         await (0, run_1.run)();
     }
