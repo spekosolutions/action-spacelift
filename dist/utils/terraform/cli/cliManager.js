@@ -27,6 +27,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const terraformManager_1 = __importDefault(require("../terraformManager"));
+const config_1 = __importDefault(require("../../config/config"));
 const core = __importStar(require("@actions/core"));
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
@@ -35,8 +36,9 @@ const util_1 = require("util");
 const execAsync = (0, util_1.promisify)(child_process_1.exec);
 class TerraformCliManager extends terraformManager_1.default {
     constructor() {
-        super(process.env.SPACELIFT_MODULE_TOKEN);
-        this.stackPath = `./deployment/${process.env.LABEL_SUFFIX}/stack`;
+        const config = config_1.default.getInstance();
+        super(config.spaceliftModuleToken);
+        this.config = config;
         this.initializeTerraform();
     }
     /**
@@ -45,12 +47,12 @@ class TerraformCliManager extends terraformManager_1.default {
     async initializeTerraform() {
         try {
             core.info('Initializing Terraform to configure the backend...');
-            const backendConfigPath = path.join(this.stackPath, 'state.tf');
+            const backendConfigPath = path.join(this.config.stackPath, 'state.tf');
             if (!fs.existsSync(backendConfigPath)) {
                 const backendConfigContent = this.generateBackendConfigContent();
                 this.writeBackendConfigToFile(backendConfigContent);
             }
-            await execAsync(`terraform init`, { cwd: this.stackPath });
+            await execAsync(`terraform init`, { cwd: this.config.stackPath });
             core.info('Terraform initialized successfully.');
         }
         catch (error) {
@@ -65,10 +67,10 @@ class TerraformCliManager extends terraformManager_1.default {
         return `
 terraform {
   backend "s3" {
-    bucket         = "spacelift-stacks-${process.env.AWS_REGION}-${process.env.AWS_ACCOUNT_ID}"
-    key            = "${process.env.ENVIRONMENT}/${process.env.ZONE}/${process.env.SERVICE_NAME}/${process.env.LABEL_SUFFIX}/terraform.tfstate"
-    region         = "${process.env.AWS_REGION}"
-    dynamodb_table = "spacelift-stacks-${process.env.AWS_REGION}-${process.env.AWS_ACCOUNT_ID}"
+    bucket         = "spacelift-stacks-${this.config.region}-${this.config.awsAccountId}"
+    key            = "${this.config.env}/${this.config.zone}/${this.config.serviceName}/${this.config.labelSuffix}/terraform.tfstate"
+    region         = "${this.config.region}"
+    dynamodb_table = "spacelift-stacks-${this.config.region}-${this.config.awsAccountId}"
     encrypt        = true
     kms_key_id     = "alias/aws/s3"
   }
@@ -78,7 +80,7 @@ terraform {
      * Write backend configuration to a file if it does not already exist
      */
     writeBackendConfigToFile(backendConfigContent) {
-        const backendFilePath = path.join(this.stackPath, 'state.tf');
+        const backendFilePath = path.join(this.config.stackPath, 'state.tf');
         if (!fs.existsSync(backendFilePath)) {
             fs.writeFileSync(backendFilePath, backendConfigContent, 'utf8');
             core.info(`Backend configuration written to ${backendFilePath}`);
@@ -93,7 +95,7 @@ terraform {
     async checkTerraformStateExists() {
         try {
             core.info('Checking if Terraform state exists remotely...');
-            const { stdout } = await execAsync(`terraform show -json`, { cwd: this.stackPath });
+            const { stdout } = await execAsync(`terraform show -json`, { cwd: this.config.stackPath });
             const state = JSON.parse(stdout);
             return !!state.values; // If state values exist, the state has been created
         }
@@ -107,11 +109,11 @@ terraform {
      */
     async runCommandWithLogs(command) {
         try {
-            core.info(`Running Terraform command: ${command} in path: ${this.stackPath}`);
+            core.info(`Running Terraform command: ${command} in path: ${this.config.stackPath}`);
             await new Promise((resolve, reject) => {
                 const child = (0, child_process_1.spawn)(command, {
                     shell: true,
-                    cwd: this.stackPath,
+                    cwd: this.config.stackPath,
                     env: {
                         ...process.env,
                     },

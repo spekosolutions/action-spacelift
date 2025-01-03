@@ -2,40 +2,42 @@ import * as core from '@actions/core';
 import { run } from './utils/run';
 import { installSpaceliftAndGetFolder } from './commands/spacectl';
 import { installTerraformAndGetFolder } from './commands/terraform';
+import Config from './utils/config/config';
 
-// Define the main function correctly
 const main = async (): Promise<void> => {
   try {
-    const binarySpaceliftFolder = await installSpaceliftAndGetFolder();
+    // Initialize configuration
+    const config = Config.getInstance();
 
+    // Install Spacelift CLI and add to PATH
+    const binarySpaceliftFolder = await installSpaceliftAndGetFolder();
+    core.addPath(binarySpaceliftFolder);
+    core.info(`Added spacectl to PATH: ${binarySpaceliftFolder}`);
+
+    // Install Terraform CLI and add to PATH
     (async () => {
       try {
         const binaryTerraformFolder = await installTerraformAndGetFolder();
-        console.log(`Terraform installed at ${binaryTerraformFolder}`);
         core.addPath(binaryTerraformFolder);
-        core.info("Added terraform to PATH: " + binaryTerraformFolder);
+        core.info(`Added terraform to PATH: ${binaryTerraformFolder}`);
       } catch (error) {
-        console.error(`Failed to install Terraform: ${(error as Error).message}`);
+        core.error(`Failed to install Terraform: ${(error as Error).message}`);
       }
     })();
 
-    core.addPath(binarySpaceliftFolder);
-    core.info("Added spacectl to PATH: " + binarySpaceliftFolder);
+    // Use the Config instance to retrieve settings
+    core.info(`Running command: ${config.command}`);
+    core.info(`Region: ${config.region}`);
+    core.info(`Zone: ${config.zone}`);
+    core.info(`Environment: ${config.env}`);
+    core.info(`Service Name: ${config.serviceName}`);
+    core.info(`Label Prefix: ${config.labelPrefix}`);
+    core.info(`Label Suffix: ${config.labelSuffix}`);
+    core.info(`Spacelift Module Token: ${config.spaceliftModuleToken}`);
+    core.info(`Environment Context: ${config.envContext}`);
+    core.info(`Parsed Environment Variables: ${JSON.stringify(config.envVars)}`);
 
-    // Set environment variables from inputs
-    process.env.COMMAND = core.getInput('command', { required: true });
-    process.env.REGION = core.getInput('region', { required: true });
-    process.env.ZONE = core.getInput('zone', { required: true });
-    process.env.ENV = core.getInput('env', { required: true });
-    process.env.INTEGRATION_NAME = core.getInput('integration_name', { required: true });
-    process.env.SERVICE_NAME = core.getInput('service_name', { required: true });
-    process.env.LABEL_PREFIX = core.getInput('label_prefix', { required: false });
-    process.env.LABEL_SUFFIX = core.getInput('label_suffix', { required: true });
-    process.env.ENV_VARS = core.getInput('env_vars', { required: false });
-    process.env.SPACELIFT_MODULE_TOKEN = core.getInput('spacelift_module_token', { required: true });
-    process.env.ENV_CONTEXT = core.getInput('env_context', { required: true });
-
-    // Pass inputs to the run function
+    // Pass configuration to the run function
     await run();
   } catch (e) {
     core.setFailed((e as Error).message);
@@ -43,7 +45,7 @@ const main = async (): Promise<void> => {
   }
 };
 
-// Export the main function so it can be imported in test files
+// Export the main function for testing purposes
 export { main };
 
 // Ensure proper handling of errors in the async context

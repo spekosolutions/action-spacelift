@@ -1,17 +1,20 @@
 import TerraformManager from '../terraformManager';
+import Config from '../../config/config';
 import * as core from '@actions/core';
 import * as fs from 'fs';
 import * as path from 'path';
 import { spawn, exec } from 'child_process';
 import { promisify } from 'util';
+
 const execAsync = promisify(exec);
 
 class TerraformCliManager extends TerraformManager {
-  private stackPath: string;
+  private config: Config;
 
   constructor() {
-    super(process.env.SPACELIFT_MODULE_TOKEN!);
-    this.stackPath = `./deployment/${process.env.LABEL_SUFFIX}/stack`;
+    const config = Config.getInstance();
+    super(config.spaceliftModuleToken);
+    this.config = config;
     this.initializeTerraform();
   }
 
@@ -22,13 +25,13 @@ class TerraformCliManager extends TerraformManager {
     try {
       core.info('Initializing Terraform to configure the backend...');
 
-      const backendConfigPath = path.join(this.stackPath, 'state.tf');
+      const backendConfigPath = path.join(this.config.stackPath, 'state.tf');
       if (!fs.existsSync(backendConfigPath)) {
         const backendConfigContent = this.generateBackendConfigContent();
         this.writeBackendConfigToFile(backendConfigContent);
       }
 
-      await execAsync(`terraform init`, { cwd: this.stackPath });
+      await execAsync(`terraform init`, { cwd: this.config.stackPath });
       core.info('Terraform initialized successfully.');
     } catch (error) {
       core.error(`Error initializing Terraform: ${(error as Error).message}`);
@@ -43,10 +46,10 @@ class TerraformCliManager extends TerraformManager {
     return `
 terraform {
   backend "s3" {
-    bucket         = "spacelift-stacks-${process.env.AWS_REGION}-${process.env.AWS_ACCOUNT_ID}"
-    key            = "${process.env.ENVIRONMENT}/${process.env.ZONE}/${process.env.SERVICE_NAME}/${process.env.LABEL_SUFFIX}/terraform.tfstate"
-    region         = "${process.env.AWS_REGION}"
-    dynamodb_table = "spacelift-stacks-${process.env.AWS_REGION}-${process.env.AWS_ACCOUNT_ID}"
+    bucket         = "spacelift-stacks-${this.config.region}-${this.config.awsAccountId}"
+    key            = "${this.config.env}/${this.config.zone}/${this.config.serviceName}/${this.config.labelSuffix}/terraform.tfstate"
+    region         = "${this.config.region}"
+    dynamodb_table = "spacelift-stacks-${this.config.region}-${this.config.awsAccountId}"
     encrypt        = true
     kms_key_id     = "alias/aws/s3"
   }
@@ -57,7 +60,7 @@ terraform {
    * Write backend configuration to a file if it does not already exist
    */
   private writeBackendConfigToFile(backendConfigContent: string): void {
-    const backendFilePath = path.join(this.stackPath, 'state.tf');
+    const backendFilePath = path.join(this.config.stackPath, 'state.tf');
     if (!fs.existsSync(backendFilePath)) {
       fs.writeFileSync(backendFilePath, backendConfigContent, 'utf8');
       core.info(`Backend configuration written to ${backendFilePath}`);
@@ -72,7 +75,7 @@ terraform {
   async checkTerraformStateExists(): Promise<boolean> {
     try {
       core.info('Checking if Terraform state exists remotely...');
-      const { stdout } = await execAsync(`terraform show -json`, { cwd: this.stackPath });
+      const { stdout } = await execAsync(`terraform show -json`, { cwd: this.config.stackPath });
       const state = JSON.parse(stdout);
       return !!state.values; // If state values exist, the state has been created
     } catch (error) {
@@ -84,16 +87,14 @@ terraform {
   /**
    * Run a command with real-time logging
    */
-  async runCommandWithLogs(
-    command: string,
-  ): Promise<void> {
+  async runCommandWithLogs(command: string): Promise<void> {
     try {
-      core.info(`Running Terraform command: ${command} in path: ${this.stackPath}`);
+      core.info(`Running Terraform command: ${command} in path: ${this.config.stackPath}`);
 
       await new Promise<void>((resolve, reject) => {
         const child = spawn(command, {
           shell: true,
-          cwd: this.stackPath,
+          cwd: this.config.stackPath,
           env: {
             ...process.env,
           },

@@ -22,42 +22,47 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.main = void 0;
 const core = __importStar(require("@actions/core"));
 const run_1 = require("./utils/run");
 const spacectl_1 = require("./commands/spacectl");
 const terraform_1 = require("./commands/terraform");
-// Define the main function correctly
+const config_1 = __importDefault(require("./utils/config/config"));
 const main = async () => {
     try {
+        // Initialize configuration
+        const config = config_1.default.getInstance();
+        // Install Spacelift CLI and add to PATH
         const binarySpaceliftFolder = await (0, spacectl_1.installSpaceliftAndGetFolder)();
+        core.addPath(binarySpaceliftFolder);
+        core.info(`Added spacectl to PATH: ${binarySpaceliftFolder}`);
+        // Install Terraform CLI and add to PATH
         (async () => {
             try {
                 const binaryTerraformFolder = await (0, terraform_1.installTerraformAndGetFolder)();
-                console.log(`Terraform installed at ${binaryTerraformFolder}`);
                 core.addPath(binaryTerraformFolder);
-                core.info("Added terraform to PATH: " + binaryTerraformFolder);
+                core.info(`Added terraform to PATH: ${binaryTerraformFolder}`);
             }
             catch (error) {
-                console.error(`Failed to install Terraform: ${error.message}`);
+                core.error(`Failed to install Terraform: ${error.message}`);
             }
         })();
-        core.addPath(binarySpaceliftFolder);
-        core.info("Added spacectl to PATH: " + binarySpaceliftFolder);
-        // Set environment variables from inputs
-        process.env.COMMAND = core.getInput('command', { required: true });
-        process.env.REGION = core.getInput('region', { required: true });
-        process.env.ZONE = core.getInput('zone', { required: true });
-        process.env.ENV = core.getInput('env', { required: true });
-        process.env.INTEGRATION_NAME = core.getInput('integration_name', { required: true });
-        process.env.SERVICE_NAME = core.getInput('service_name', { required: true });
-        process.env.LABEL_PREFIX = core.getInput('label_prefix', { required: false });
-        process.env.LABEL_SUFFIX = core.getInput('label_suffix', { required: true });
-        process.env.ENV_VARS = core.getInput('env_vars', { required: false });
-        process.env.SPACELIFT_MODULE_TOKEN = core.getInput('spacelift_module_token', { required: true });
-        process.env.ENV_CONTEXT = core.getInput('env_context', { required: true });
-        // Pass inputs to the run function
+        // Use the Config instance to retrieve settings
+        core.info(`Running command: ${config.command}`);
+        core.info(`Region: ${config.region}`);
+        core.info(`Zone: ${config.zone}`);
+        core.info(`Environment: ${config.env}`);
+        core.info(`Service Name: ${config.serviceName}`);
+        core.info(`Label Prefix: ${config.labelPrefix}`);
+        core.info(`Label Suffix: ${config.labelSuffix}`);
+        core.info(`Spacelift Module Token: ${config.spaceliftModuleToken}`);
+        core.info(`Environment Context: ${config.envContext}`);
+        core.info(`Parsed Environment Variables: ${JSON.stringify(config.envVars)}`);
+        // Pass configuration to the run function
         await (0, run_1.run)();
     }
     catch (e) {
