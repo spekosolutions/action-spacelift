@@ -490,7 +490,7 @@ class Config {
         this.env = core.getInput('env', { required: true });
         this.integrationName = core.getInput('integration_name', { required: true });
         this.serviceName = core.getInput('service_name', { required: true });
-        this.labelPrefix = core.getInput('label_prefix', { required: false }) || '';
+        this.labelPrefix = core.getInput('label_prefix', { required: false }) || 'aws:services';
         this.labelSuffix = core.getInput('label_suffix', { required: true });
         this.spaceliftModuleToken = core.getInput('spacelift_module_token', { required: true });
         this.envContext = core.getInput('env_context', { required: true });
@@ -713,17 +713,16 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const graphQLManager_1 = __importDefault(__nccwpck_require__(9343));
+const config_1 = __importDefault(__nccwpck_require__(6741));
 const core = __importStar(__nccwpck_require__(9093));
 class SpaceManager extends graphQLManager_1.default {
     constructor() {
         super();
+        this.config = config_1.default.getInstance();
     }
     // Method to create service space with clear distinction for existing space
     async createServiceSpace() {
-        const labelPrefix = process.env.LABEL_PREFIX;
-        const env = process.env.ENV;
-        const zone = process.env.ZONE;
-        const serviceName = process.env.SERVICE_NAME;
+        const { labelPrefix, env, zone, serviceName } = this.config;
         const label = `${labelPrefix}:${env}:${zone}:${serviceName}`;
         const labelParts = label.split(':');
         let parentId = undefined;

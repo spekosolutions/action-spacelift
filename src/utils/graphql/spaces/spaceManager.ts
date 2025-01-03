@@ -1,17 +1,18 @@
 import GraphQLManager from '../graphQLManager';
+import Config from '../../config/config';
 import * as core from '@actions/core';
 
 class SpaceManager extends GraphQLManager {
+  private config: Config;
+
   constructor() {
     super();
+    this.config = Config.getInstance();
   }
 
   // Method to create service space with clear distinction for existing space
   async createServiceSpace(): Promise<string> {
-    const labelPrefix = process.env.LABEL_PREFIX!;
-    const env = process.env.ENV!;
-    const zone = process.env.ZONE!;
-    const serviceName = process.env.SERVICE_NAME!;
+    const { labelPrefix, env, zone, serviceName } = this.config;
     const label = `${labelPrefix}:${env}:${zone}:${serviceName}`;
     const labelParts = label.split(':');
 

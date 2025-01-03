@@ -34,7 +34,7 @@ class Config {
     this.env = core.getInput('env', { required: true });
     this.integrationName = core.getInput('integration_name', { required: true });
     this.serviceName = core.getInput('service_name', { required: true });
-    this.labelPrefix = core.getInput('label_prefix', { required: false }) || '';
+    this.labelPrefix = core.getInput('label_prefix', { required: false }) || 'aws:services';
     this.labelSuffix = core.getInput('label_suffix', { required: true });
     this.spaceliftModuleToken = core.getInput('spacelift_module_token', { required: true });
     this.envContext = core.getInput('env_context', { required: true });
