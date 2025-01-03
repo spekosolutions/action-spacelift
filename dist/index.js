@@ -1170,11 +1170,10 @@ const manageSpace = async () => {
  */
 const manageStack = async () => {
     try {
-        await terraformCliManager.initialize(); // Explicit initialization
-        const stateExists = await terraformCliManager.checkTerraformStateExists();
+        await terraformCliManager.initialize();
         const stackVars = `-var 'parent_space_id=${config.parentSpaceId}' -var 'application=${config.serviceName}' -var 'env=${config.env}' -var 'zone=${config.zone}' -var 'region=${config.region}' -var 'env_context=${config.envContext}'`;
-        const stackExists = spacectlStackManager.doesStackExist(config.stackName);
-        core.info(`Does stack exist? : ${stackExists}`);
+        const stackExists = await spacectlStackManager.doesStackExist(config.stackName);
+        core.info(`Stack existence check returned: ${stackExists}`);
         if (!stackExists) {
             core.info(`Stack "${config.stackName}" does not exist. Initializing and applying Terraform...`);
             await terraformCliManager.runCommandWithLogs(`terraform apply --auto-approve ${stackVars}`);
@@ -1398,9 +1397,13 @@ class StackManager extends spacectlManager_1.default {
             core.info(`Checking if stack '${stackIdOrName}' exists...`);
             // Run the spacectl command to list stacks and filter by stack ID
             const commandToRun = `spacectl stack list --search ${stackIdOrName} --output json`;
+            core.info(`Executing command: ${commandToRun}`);
             const { stdout } = await execAsync(commandToRun);
+            // Log raw output for debugging
+            core.info(`Raw command output: ${stdout}`);
             // Parse the JSON output to check if the stack exists
             const stacks = JSON.parse(stdout);
+            core.info(`Parsed stacks: ${JSON.stringify(stacks)}`);
             if (stacks.length > 0) {
                 core.info(`Stack '${stackIdOrName}' exists.`);
                 return true;
@@ -1412,7 +1415,7 @@ class StackManager extends spacectlManager_1.default {
         }
         catch (error) {
             core.error(`Error checking if stack exists: ${error.message}`);
-            return false;
+            return false; // Default to false on error
         }
     }
 }

@@ -72,14 +72,19 @@ class StackManager extends SpacectlManager {
   async doesStackExist(stackIdOrName: string): Promise<boolean> {
     try {
       core.info(`Checking if stack '${stackIdOrName}' exists...`);
-
+  
       // Run the spacectl command to list stacks and filter by stack ID
       const commandToRun = `spacectl stack list --search ${stackIdOrName} --output json`;
+      core.info(`Executing command: ${commandToRun}`);
       const { stdout } = await execAsync(commandToRun);
-
+  
+      // Log raw output for debugging
+      core.info(`Raw command output: ${stdout}`);
+  
       // Parse the JSON output to check if the stack exists
       const stacks = JSON.parse(stdout);
-
+      core.info(`Parsed stacks: ${JSON.stringify(stacks)}`);
+  
       if (stacks.length > 0) {
         core.info(`Stack '${stackIdOrName}' exists.`);
         return true;
@@ -89,9 +94,9 @@ class StackManager extends SpacectlManager {
       }
     } catch (error) {
       core.error(`Error checking if stack exists: ${(error as Error).message}`);
-      return false;
+      return false; // Default to false on error
     }
-  }
+  }  
 }
 
 export default StackManager;
