@@ -34,9 +34,9 @@ const child_process_1 = require("child_process");
 const util_1 = require("util");
 const execAsync = (0, util_1.promisify)(child_process_1.exec);
 class TerraformCliManager extends terraformManager_1.default {
-    constructor(token, stackPath) {
-        super(token);
-        this.stackPath = stackPath;
+    constructor() {
+        super(process.env.SPACELIFT_MODULE_TOKEN);
+        this.stackPath = `./deployment/${process.env.LABEL_SUFFIX}/stack`;
         this.initializeTerraform();
     }
     /**

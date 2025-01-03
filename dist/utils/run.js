@@ -34,7 +34,7 @@ const cliManager_1 = __importDefault(require("./terraform/cli/cliManager"));
 const stackManager_2 = __importDefault(require("./spacectl/stacks/stackManager"));
 const graphqlStackManager = new stackManager_1.default();
 const spacectlStackManager = new stackManager_2.default();
-const terraformCliManager = new cliManager_1.default(process.env.SPACELIFT_MODULE_TOKEN, `./deployment/${process.env.LABEL_POSTFIX}/stack`);
+const terraformCliManager = new cliManager_1.default();
 /**
  * Helper to parse environment variables from raw input
  */
@@ -60,12 +60,11 @@ const parseEnvVars = (rawEnvVars) => {
 const manageSpace = async () => {
     const spaceManager = new spaceManager_1.default();
     try {
-        const parentSpaceId = await spaceManager.createServiceSpace({
-            label_postfix: '', // Exclude postfix for parent space
-            ...process.env,
-        });
-        const spaceId = await spaceManager.createServiceSpace(process.env);
-        return { spaceId, parentSpaceId };
+        const parentSpaceId = await spaceManager.createServiceSpace();
+        core.info(`Using Parent Space with ID: ${parentSpaceId}`);
+        // !! We changed to use terraform for creating stacks, so we don't need to create a space here
+        // const spaceId = await spaceManager.createServiceSpace(process.env as Record<string, string>);
+        return { parentSpaceId };
     }
     catch (error) {
         core.error('Error creating service space:');
@@ -112,15 +111,14 @@ const run = async () => {
         if (!githubSha) {
             throw new Error('GITHUB_SHA environment variable is not set.');
         }
-        const stackName = `${process.env.LABEL_POSTFIX}-${process.env.SERVICE_NAME}-${process.env.ENV}-${process.env.ZONE}`;
+        const stackName = `${process.env.LABEL_SUFFIX}-${process.env.SERVICE_NAME}-${process.env.ENV}-${process.env.ZONE}`;
         core.info(`Using stack name: ${stackName}`);
         // Parse environment variables
         const envVars = parseEnvVars(process.env.ENV_VARS || '{}');
         core.info(`Parsed env_vars: ${JSON.stringify(envVars)}`);
         // Manage spaces before proceeding with any operations
         core.info('Creating or managing space...');
-        const { spaceId } = await manageSpace();
-        core.info(`Space created or managed with ID: ${spaceId}`);
+        await manageSpace();
         // Manage stacks based on Terraform state
         await manageStack(stackName);
     }

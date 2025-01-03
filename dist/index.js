@@ -253,8 +253,8 @@ const main = async () => {
         process.env.ENV = core.getInput('env', { required: true });
         process.env.INTEGRATION_NAME = core.getInput('integration_name', { required: true });
         process.env.SERVICE_NAME = core.getInput('service_name', { required: true });
-        process.env.LABEL_PREFIX = core.getInput('label_prefix', { required: true });
-        process.env.LABEL_POSTFIX = core.getInput('label_postfix', { required: true });
+        process.env.LABEL_PREFIX = core.getInput('label_prefix', { required: false });
+        process.env.LABEL_SUFFIX = core.getInput('label_suffix', { required: true });
         process.env.ENV_VARS = core.getInput('env_vars', { required: false });
         process.env.SPACELIFT_MODULE_TOKEN = core.getInput('spacelift_module_token', { required: true });
         process.env.ENV_CONTEXT = core.getInput('env_context', { required: true });
@@ -618,9 +618,12 @@ class SpaceManager extends graphQLManager_1.default {
         super();
     }
     // Method to create service space with clear distinction for existing space
-    async createServiceSpace(inputs) {
-        const { label_prefix, env, zone, service_name } = inputs;
-        const label = `${label_prefix}:${env}:${zone}:${service_name}`;
+    async createServiceSpace() {
+        const labelPrefix = process.env.LABEL_PREFIX;
+        const env = process.env.ENV;
+        const zone = process.env.ZONE;
+        const serviceName = process.env.SERVICE_NAME;
+        const label = `${labelPrefix}:${env}:${zone}:${serviceName}`;
         const labelParts = label.split(':');
         let parentId = undefined;
         let isNewSpaceCreated = false; // Flag to check if new space was created
@@ -692,11 +695,9 @@ class SpaceManager extends graphQLManager_1.default {
     // Method to find space by label with logging and error handling
     async findSpaceByLabel(label) {
         try {
-            core.info(`Fidning space with label: ${label}`);
+            core.info(`Finding space with label: ${label}`);
             // Query spaces
             const spaces = await this.querySpaces();
-            //   // Log the spaces result for debugging
-            //   core.info(`Queried spaces: ${JSON.stringify(spaces, null, 2)}`)
             // Find space that matches the label
             const foundSpace = spaces.find((space) => space.labels.includes(label)) || null;
             // Log the result of the space found
@@ -1023,7 +1024,7 @@ const cliManager_1 = __importDefault(__nccwpck_require__(5625));
 const stackManager_2 = __importDefault(__nccwpck_require__(4767));
 const graphqlStackManager = new stackManager_1.default();
 const spacectlStackManager = new stackManager_2.default();
-const terraformCliManager = new cliManager_1.default(process.env.SPACELIFT_MODULE_TOKEN, `./deployment/${process.env.LABEL_POSTFIX}/stack`);
+const terraformCliManager = new cliManager_1.default();
 /**
  * Helper to parse environment variables from raw input
  */
@@ -1049,12 +1050,11 @@ const parseEnvVars = (rawEnvVars) => {
 const manageSpace = async () => {
     const spaceManager = new spaceManager_1.default();
     try {
-        const parentSpaceId = await spaceManager.createServiceSpace({
-            label_postfix: '', // Exclude postfix for parent space
-            ...process.env,
-        });
-        const spaceId = await spaceManager.createServiceSpace(process.env);
-        return { spaceId, parentSpaceId };
+        const parentSpaceId = await spaceManager.createServiceSpace();
+        core.info(`Using Parent Space with ID: ${parentSpaceId}`);
+        // !! We changed to use terraform for creating stacks, so we don't need to create a space here
+        // const spaceId = await spaceManager.createServiceSpace(process.env as Record<string, string>);
+        return { parentSpaceId };
     }
     catch (error) {
         core.error('Error creating service space:');
@@ -1101,15 +1101,14 @@ const run = async () => {
         if (!githubSha) {
             throw new Error('GITHUB_SHA environment variable is not set.');
         }
-        const stackName = `${process.env.LABEL_POSTFIX}-${process.env.SERVICE_NAME}-${process.env.ENV}-${process.env.ZONE}`;
+        const stackName = `${process.env.LABEL_SUFFIX}-${process.env.SERVICE_NAME}-${process.env.ENV}-${process.env.ZONE}`;
         core.info(`Using stack name: ${stackName}`);
         // Parse environment variables
         const envVars = parseEnvVars(process.env.ENV_VARS || '{}');
         core.info(`Parsed env_vars: ${JSON.stringify(envVars)}`);
         // Manage spaces before proceeding with any operations
         core.info('Creating or managing space...');
-        const { spaceId } = await manageSpace();
-        core.info(`Space created or managed with ID: ${spaceId}`);
+        await manageSpace();
         // Manage stacks based on Terraform state
         await manageStack(stackName);
     }
@@ -1332,9 +1331,9 @@ const child_process_1 = __nccwpck_require__(2081);
 const util_1 = __nccwpck_require__(3837);
 const execAsync = (0, util_1.promisify)(child_process_1.exec);
 class TerraformCliManager extends terraformManager_1.default {
-    constructor(token, stackPath) {
-        super(token);
-        this.stackPath = stackPath;
+    constructor() {
+        super(process.env.SPACELIFT_MODULE_TOKEN);
+        this.stackPath = `./deployment/${process.env.LABEL_SUFFIX}/stack`;
         this.initializeTerraform();
     }
     /**
