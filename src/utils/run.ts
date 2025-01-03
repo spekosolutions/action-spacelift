@@ -71,6 +71,8 @@ const manageStack = async (): Promise<void> => {
       core.info('Running additional Spacelift commands on stack...');
       if (config.command.startsWith('terraform')) {
         await terraformCliManager.runCommandWithLogs(`${config.command} ${config.getStackVars()}`);
+      } else if (config.command.startsWith('outputs')) {
+        spacectlStackManager.getStackOutputs(config.stackName);
       } else {
         await spacectlStackManager.runCommand(config.stackName, config.command);
       }
