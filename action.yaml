@@ -14,9 +14,6 @@ inputs:
   env:
     description: "Environment"
     required: true
-  integration_name:
-    description: "Integration name"
-    required: true
   service_name:
     description: "Service name"
     required: true
@@ -45,6 +42,10 @@ inputs:
   env_context:
     description: "Environment context"
     required: true
+  deployment_path:
+    description: "Deployment path"
+    required: false
+    default: "./deployment"
 
 outputs:
   outputs: 

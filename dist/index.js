@@ -491,7 +491,7 @@ class Config {
         this.envContext = core.getInput('env_context', { required: true });
         this.githubSha = process.env.GITHUB_SHA || '';
         this.stackName = `${this.labelSuffix}-${this.serviceName}-${this.env}-${this.zone}`;
-        this.deploymentPath = core.getInput('deployment_path', { required: false }) || './deployment';
+        this.deploymentPath = core.getInput('deployment_path', { required: true });
         this.stackPath = `${this.deploymentPath}/${this.labelSuffix}/stack`;
         this.stack_bucket = `spacelift-stacks-${this.region}-${this.awsAccountId}`;
         this.stack_bucket_key = `${this.env}/${this.zone}/${this.serviceName}/${this.labelSuffix}/terraform.tfstate`;
