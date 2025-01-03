@@ -9,9 +9,9 @@ const execAsync = promisify(exec);
 class TerraformCliManager extends TerraformManager {
   private stackPath: string;
 
-  constructor(token: string, stackPath: string) {
-    super(token);
-    this.stackPath = stackPath;
+  constructor() {
+    super(process.env.SPACELIFT_MODULE_TOKEN!);
+    this.stackPath = `./deployment/${process.env.LABEL_SUFFIX}/stack`;
     this.initializeTerraform();
   }
 
@@ -36,7 +36,6 @@ class TerraformCliManager extends TerraformManager {
     }
   }
 
-  
   /**
    * Generate backend configuration content for Terraform
    */

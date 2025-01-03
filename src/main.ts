@@ -29,8 +29,8 @@ const main = async (): Promise<void> => {
     process.env.ENV = core.getInput('env', { required: true });
     process.env.INTEGRATION_NAME = core.getInput('integration_name', { required: true });
     process.env.SERVICE_NAME = core.getInput('service_name', { required: true });
-    process.env.LABEL_PREFIX = core.getInput('label_prefix', { required: true });
-    process.env.LABEL_POSTFIX = core.getInput('label_postfix', { required: true });
+    process.env.LABEL_PREFIX = core.getInput('label_prefix', { required: false });
+    process.env.LABEL_SUFFIX = core.getInput('label_suffix', { required: true });
     process.env.ENV_VARS = core.getInput('env_vars', { required: false });
     process.env.SPACELIFT_MODULE_TOKEN = core.getInput('spacelift_module_token', { required: true });
     process.env.ENV_CONTEXT = core.getInput('env_context', { required: true });

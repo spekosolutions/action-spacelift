@@ -24,7 +24,7 @@ inputs:
     description: "Label prefix"
     required: false
     default: "aws:services"
-  label_postfix:
+  label_suffix:
     description: "Label postfix"
     required: true
   github-token:

@@ -6,10 +6,7 @@ import StackManager from './spacectl/stacks/stackManager';
 
 const graphqlStackManager = new GraphQLStackManager();
 const spacectlStackManager = new StackManager();
-const terraformCliManager = new TerraformCliManager(
-  process.env.SPACELIFT_MODULE_TOKEN!,
-  `./deployment/${process.env.LABEL_POSTFIX}/stack`
-);
+const terraformCliManager = new TerraformCliManager();
 
 /**
  * Helper to parse environment variables from raw input
@@ -33,15 +30,14 @@ const parseEnvVars = (rawEnvVars: string): Record<string, any> => {
 /**
  * Create or manage spaces
  */
-const manageSpace = async (): Promise<{ spaceId: string; parentSpaceId: string }> => {
+const manageSpace = async (): Promise<{ parentSpaceId: string }> => {
   const spaceManager = new SpaceManager();
   try {
-    const parentSpaceId = await spaceManager.createServiceSpace({
-      label_postfix: '', // Exclude postfix for parent space
-      ...process.env,
-    });
-    const spaceId = await spaceManager.createServiceSpace(process.env as Record<string, string>);
-    return { spaceId, parentSpaceId };
+    const parentSpaceId = await spaceManager.createServiceSpace();
+    core.info(`Using Parent Space with ID: ${parentSpaceId}`);
+    // !! We changed to use terraform for creating stacks, so we don't need to create a space here
+    // const spaceId = await spaceManager.createServiceSpace(process.env as Record<string, string>);
+    return { parentSpaceId };
   } catch (error) {
     core.error('Error creating service space:');
     throw error;
@@ -89,7 +85,7 @@ export const run = async (): Promise<void> => {
       throw new Error('GITHUB_SHA environment variable is not set.');
     }
 
-    const stackName = `${process.env.LABEL_POSTFIX}-${process.env.SERVICE_NAME}-${process.env.ENV}-${process.env.ZONE}`;
+    const stackName = `${process.env.LABEL_SUFFIX}-${process.env.SERVICE_NAME}-${process.env.ENV}-${process.env.ZONE}`;
     core.info(`Using stack name: ${stackName}`);
 
     // Parse environment variables
@@ -98,8 +94,7 @@ export const run = async (): Promise<void> => {
 
     // Manage spaces before proceeding with any operations
     core.info('Creating or managing space...');
-    const { spaceId } = await manageSpace();
-    core.info(`Space created or managed with ID: ${spaceId}`);
+    await manageSpace();
 
     // Manage stacks based on Terraform state
     await manageStack(stackName);
