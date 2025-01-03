@@ -1155,7 +1155,7 @@ const manageSpace = async () => {
     try {
         const parentSpaceId = await spaceManager.createServiceSpace();
         config.setParentSpaceId(parentSpaceId);
-        core.info(`Using Parent Space with ID: ${config.setParentSpaceId}`);
+        core.info(`Using Parent Space with ID: ${config.parentSpaceId}`);
         return { parentSpaceId: config.parentSpaceId ?? '' };
     }
     catch (error) {
@@ -1175,7 +1175,7 @@ const manageStack = async () => {
         const stackExists = await spacectlStackManager.doesStackExist(config.stackName);
         core.info(`Stack existence check returned: ${stackExists}`);
         if (!stackExists) {
-            core.info(`Stack "${config.stackName}" does not exist. Initializing and applying Terraform...`);
+            core.info(`Stack "${config.stackName}" does not exist. Initializing and applying Terraform... with: ${config.getStackVars()}`);
             await terraformCliManager.runCommandWithLogs(`terraform apply --auto-approve ${config.getStackVars()}`);
             core.info(`Stack "${config.stackName}" created successfully.`);
             core.info(`Running first-time deployment on stack "${config.stackName}"`);
