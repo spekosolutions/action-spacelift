@@ -52,7 +52,7 @@ const manageStack = async (): Promise<void> => {
   try {
     const stateExists = await terraformCliManager.checkTerraformStateExists();
 
-    const stackVars = `-var 'parent_space_id=${config.parentSpaceId}' -var 'application=${config.serviceName}' -var 'env=${config.env}' -var 'zone=${config.zone}' -var 'region=${config.region}' -var 'env_context=${config.envContext}`;
+    const stackVars = `-var 'parent_space_id=${config.parentSpaceId}' -var 'application=${config.serviceName}' -var 'env=${config.env}' -var 'zone=${config.zone}' -var 'region=${config.region}' -var 'env_context=${config.envContext}'`;
 
     if (!stateExists) {
       core.info(`State for stack "${config.stackName}" does not exist. Initializing and applying Terraform...`);
