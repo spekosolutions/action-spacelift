@@ -66,13 +66,14 @@ const manageStack = async (): Promise<void> => {
       core.info(`Stack "${config.stackName}" created successfully.`);
       core.info(`Running first-time deployment on stack "${config.stackName}"`);
       await spacectlStackManager.runCommand(config.stackName, `deploy --tail --auto-confirm`);
+      await spacectlStackManager.getStackOutputs(config.stackName);
     } else {
       core.info(`Stack "${config.stackName}" already exists.`);
       core.info('Running additional Spacelift commands on stack...');
       if (config.command.startsWith('terraform')) {
         await terraformCliManager.runCommandWithLogs(`${config.command} ${config.getStackVars()}`);
       } else if (config.command.startsWith('outputs')) {
-        spacectlStackManager.getStackOutputs(config.stackName);
+        await spacectlStackManager.getStackOutputs(config.stackName);
       } else {
         await spacectlStackManager.runCommand(config.stackName, config.command);
       }
