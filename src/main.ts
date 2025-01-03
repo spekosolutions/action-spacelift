@@ -21,20 +21,22 @@ const main = async (): Promise<void> => {
 
     core.addPath(binarySpaceliftFolder);
     core.info("Added spacectl to PATH: " + binarySpaceliftFolder);
-    
-    await run({
-      command: core.getInput('command', { required: true }),
-      region: core.getInput('region', { required: true }),
-      zone: core.getInput('zone', { required: true }),
-      env: core.getInput('env', { required: true }),
-      integration_name: core.getInput('integration_name', { required: true }),
-      service_name: core.getInput('service_name', { required: true }),
-      label_prefix: core.getInput('label_prefix', { required: true }),
-      label_postfix: core.getInput('label_postfix', { required: true }),
-      rawEnvVars: core.getInput('env_vars', { required: false }),
-      spacelift_module_token: core.getInput('spacelift_module_token', { required: true }),
-      env_context: core.getInput('env_context', { required: true }),
-    });
+
+    // Set environment variables from inputs
+    process.env.COMMAND = core.getInput('command', { required: true });
+    process.env.REGION = core.getInput('region', { required: true });
+    process.env.ZONE = core.getInput('zone', { required: true });
+    process.env.ENV = core.getInput('env', { required: true });
+    process.env.INTEGRATION_NAME = core.getInput('integration_name', { required: true });
+    process.env.SERVICE_NAME = core.getInput('service_name', { required: true });
+    process.env.LABEL_PREFIX = core.getInput('label_prefix', { required: true });
+    process.env.LABEL_POSTFIX = core.getInput('label_postfix', { required: true });
+    process.env.ENV_VARS = core.getInput('env_vars', { required: false });
+    process.env.SPACELIFT_MODULE_TOKEN = core.getInput('spacelift_module_token', { required: true });
+    process.env.ENV_CONTEXT = core.getInput('env_context', { required: true });
+
+    // Pass inputs to the run function
+    await run();
   } catch (e) {
     core.setFailed((e as Error).message);
     console.error(e);

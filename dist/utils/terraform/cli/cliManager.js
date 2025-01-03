@@ -31,43 +31,54 @@ const core = __importStar(require("@actions/core"));
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const child_process_1 = require("child_process");
-// Child class extending TerraformManager to handle CLI operations
+const util_1 = require("util");
+const execAsync = (0, util_1.promisify)(child_process_1.exec);
 class TerraformCliManager extends terraformManager_1.default {
-    constructor(token) {
+    constructor(token, stackPath) {
         super(token);
+        this.stackPath = stackPath;
+        this.initializeTerraform();
+    }
+    /**
+     * Initialize Terraform backend if not already initialized
+     */
+    async initializeTerraform() {
+        try {
+            core.info('Initializing Terraform to configure the backend...');
+            const backendConfigPath = path.join(this.stackPath, 'state.tf');
+            if (!fs.existsSync(backendConfigPath)) {
+                const backendConfigContent = this.generateBackendConfigContent();
+                this.writeBackendConfigToFile(backendConfigContent);
+            }
+            await execAsync(`terraform init`, { cwd: this.stackPath });
+            core.info('Terraform initialized successfully.');
+        }
+        catch (error) {
+            core.error(`Error initializing Terraform: ${error.message}`);
+            throw error;
+        }
     }
     /**
      * Generate backend configuration content for Terraform
-     * @param {string} region - AWS region
-     * @param {string} awsAccountId - AWS account ID
-     * @param {string} environment - Environment name (e.g., dev1)
-     * @param {string} zone - Zone name (e.g., na1)
-     * @param {string} serviceName - Service name
-     * @param {string} labelSuffix - Stack name
-     * @returns {string} Backend configuration content
      */
-    generateBackendConfigContent(region, awsAccountId, environment, zone, serviceName, labelSuffix) {
+    generateBackendConfigContent() {
         return `
 terraform {
   backend "s3" {
-    bucket         = "spacelift-stacks-${region}-${awsAccountId}"
-    key            = "${environment}/${zone}/${serviceName}/${labelSuffix}/terraform.tfstate"
-    region         = "${region}"
-    dynamodb_table = "spacelift-stacks-${region}-${awsAccountId}"
+    bucket         = "spacelift-stacks-${process.env.AWS_REGION}-${process.env.AWS_ACCOUNT_ID}"
+    key            = "${process.env.ENVIRONMENT}/${process.env.ZONE}/${process.env.SERVICE_NAME}/${process.env.LABEL_SUFFIX}/terraform.tfstate"
+    region         = "${process.env.AWS_REGION}"
+    dynamodb_table = "spacelift-stacks-${process.env.AWS_REGION}-${process.env.AWS_ACCOUNT_ID}"
     encrypt        = true
     kms_key_id     = "alias/aws/s3"
   }
-}
-    `.trim();
+}`.trim();
     }
     /**
      * Write backend configuration to a file if it does not already exist
-     * @param {string} stackPath - Path to the Terraform stack
-     * @param {string} backendConfigContent - Backend configuration content
-     * @returns {void}
      */
-    writeBackendConfigToFile(stackPath, backendConfigContent) {
-        const backendFilePath = path.join(stackPath, 'state.tf');
+    writeBackendConfigToFile(backendConfigContent) {
+        const backendFilePath = path.join(this.stackPath, 'state.tf');
         if (!fs.existsSync(backendFilePath)) {
             fs.writeFileSync(backendFilePath, backendConfigContent, 'utf8');
             core.info(`Backend configuration written to ${backendFilePath}`);
@@ -77,28 +88,34 @@ terraform {
         }
     }
     /**
-     * Run a command with real-time logging
-     * @param {string} stackPath - The path to the stack
-     * @param {string} command - The Terraform command to run
-     * @param {object} backendConfigParams - Parameters for generating backend configuration
-     * @returns {Promise<void>} Resolves when the command completes successfully
+     * Check if the Terraform state exists remotely
      */
-    async runCommandWithLogs(stackPath, command, backendConfigParams) {
+    async checkTerraformStateExists() {
         try {
-            // Generate and write backend configuration if it doesn't exist
-            const backendConfigContent = this.generateBackendConfigContent(backendConfigParams.region, backendConfigParams.awsAccountId, backendConfigParams.environment, backendConfigParams.zone, backendConfigParams.serviceName, backendConfigParams.labelSuffix);
-            this.writeBackendConfigToFile(stackPath, backendConfigContent);
-            // Log the command and ensure it runs sequentially
-            core.info(`Running Terraform command: ${command} in path: ${stackPath}`);
+            core.info('Checking if Terraform state exists remotely...');
+            const { stdout } = await execAsync(`terraform show -json`, { cwd: this.stackPath });
+            const state = JSON.parse(stdout);
+            return !!state.values; // If state values exist, the state has been created
+        }
+        catch (error) {
+            core.warning('Terraform state not found or could not be parsed.');
+            return false;
+        }
+    }
+    /**
+     * Run a command with real-time logging
+     */
+    async runCommandWithLogs(command) {
+        try {
+            core.info(`Running Terraform command: ${command} in path: ${this.stackPath}`);
             await new Promise((resolve, reject) => {
                 const child = (0, child_process_1.spawn)(command, {
                     shell: true,
-                    cwd: stackPath,
+                    cwd: this.stackPath,
                     env: {
                         ...process.env,
                     },
                 });
-                // Capture stdout and stderr logs
                 child.stdout.on('data', (data) => {
                     core.info(data.toString().trim());
                 });
