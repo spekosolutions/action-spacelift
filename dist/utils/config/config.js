@@ -89,7 +89,7 @@ class Config {
         if (!this.parentSpaceId) {
             throw new Error('Parent Space ID is not set. Ensure manageSpace has been executed.');
         }
-        return `-var 'parent_space_id=${this.parentSpaceId}' -var 'env=${this.env}' -var 'zone=${this.zone}' -var 'region=${this.region}' -var 'env_context=${this.envContext} -var 'stack_key=${this.labelSuffix}'`;
+        return `-var 'parent_space_id=${this.parentSpaceId}' -var 'env=${this.env}' -var 'zone=${this.zone}' -var 'region=${this.region}' -var 'env_context=${this.envContext}' -var 'stack_key=${this.labelSuffix}'`;
     }
 }
 exports.default = Config;
