@@ -1374,26 +1374,28 @@ class StackManager extends spacectlManager_1.default {
         try {
             // Run the spacectl command with --output json flag
             const { stdout, stderr } = await this.runCommand(stackIdOrName, `outputs --output json`);
-            // If there's an error in stderr, log and throw it
+            // Check if there are any errors in stderr
             if (stderr) {
                 core.error(`Error getting stack outputs: ${stderr}`);
-                throw new Error(stderr);
+                throw new Error(stderr.trim());
             }
             // Parse the JSON output
             const outputs = JSON.parse(stdout);
             // Loop through the outputs and set each as a GitHub Actions output
-            for (let [key, value] of Object.entries(outputs)) {
-                // Remove any surrounding quotes from the value if present
-                const cleanedValue = typeof value === 'string' ? value.replace(/^"|"$/g, '') : value;
+            for (const [key, value] of Object.entries(outputs)) {
+                // Ensure the value is sanitized and handle both string and non-string values
+                const cleanedValue = typeof value === 'string' ? value.replace(/^"|"$/g, '').trim() : value;
+                // Set the output in GitHub Actions
                 core.setOutput(key, cleanedValue);
             }
-            // Also set the entire JSON as an output, after removing unnecessary quotes
-            core.setOutput('outputs', JSON.stringify(outputs, (k, v) => (typeof v === 'string' ? v.replace(/^"|"$/g, '') : v)));
-            core.info(`Successfully set stack outputs in GitHub Actions: ${stdout}`);
+            // Set the entire JSON as a single output
+            core.setOutput('outputs', JSON.stringify(outputs, (k, v) => typeof v === 'string' ? v.replace(/^"|"$/g, '').trim() : v));
+            core.info(`Successfully set stack outputs in GitHub Actions.`);
         }
         catch (error) {
-            core.setFailed(`Failed to get stack outputs: ${error.message}`);
-            throw error;
+            const errorMessage = `Failed to get stack outputs: ${error.message}`;
+            core.setFailed(errorMessage);
+            throw new Error(errorMessage);
         }
     }
     // Method to check if a stack exists
