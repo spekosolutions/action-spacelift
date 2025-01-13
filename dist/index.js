@@ -1369,33 +1369,41 @@ class StackManager extends spacectlManager_1.default {
             throw error;
         }
     }
-    // Method to get the outputs from a stack
     async getStackOutputs(stackIdOrName) {
         try {
-            // Run the spacectl command with --output json flag
+            // Run the spacectl command
             const { stdout, stderr } = await this.runCommand(stackIdOrName, `outputs --output json`);
-            // Check if there are any errors in stderr
             if (stderr) {
                 core.error(`Error getting stack outputs: ${stderr}`);
-                throw new Error(stderr.trim());
+                throw new Error(stderr);
             }
             // Parse the JSON output
             const outputs = JSON.parse(stdout);
-            // Loop through the outputs and set each as a GitHub Actions output
-            for (const [key, value] of Object.entries(outputs)) {
-                // Ensure the value is sanitized and handle both string and non-string values
-                const cleanedValue = typeof value === 'string' ? value.replace(/^"|"$/g, '').trim() : value;
-                // Set the output in GitHub Actions
-                core.setOutput(key, cleanedValue);
+            // Sanitize the outputs
+            const sanitizedOutputs = outputs.map((output) => {
+                if (typeof output.value === 'string') {
+                    try {
+                        // Parse JSON-like strings into objects, if valid
+                        output.value = JSON.parse(output.value);
+                    }
+                    catch {
+                        // Remove extraneous quotes if not a JSON-like string
+                        output.value = output.value.replace(/^"|"$/g, '');
+                    }
+                }
+                return output;
+            });
+            // Set each sanitized output as a GitHub Action output
+            for (const output of sanitizedOutputs) {
+                core.setOutput(output.id, JSON.stringify(output.value));
             }
-            // Set the entire JSON as a single output
-            core.setOutput('outputs', JSON.stringify(outputs, (k, v) => typeof v === 'string' ? v.replace(/^"|"$/g, '').trim() : v));
-            core.info(`Successfully set stack outputs in GitHub Actions: ${stdout}`);
+            // Set the entire sanitized outputs as JSON
+            core.setOutput('outputs', JSON.stringify(sanitizedOutputs));
+            core.info(`Successfully set sanitized stack outputs: ${JSON.stringify(sanitizedOutputs)}`);
         }
         catch (error) {
-            const errorMessage = `Failed to get stack outputs: ${error.message}`;
-            core.setFailed(errorMessage);
-            throw new Error(errorMessage);
+            core.setFailed(`Failed to get stack outputs: ${error.message}`);
+            throw error;
         }
     }
     // Method to check if a stack exists
