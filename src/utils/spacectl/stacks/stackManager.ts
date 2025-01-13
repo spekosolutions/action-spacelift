@@ -66,7 +66,7 @@ class StackManager extends SpacectlManager {
         )
       );
 
-      core.info(`Successfully set stack outputs in GitHub Actions.`);
+      core.info(`Successfully set stack outputs in GitHub Actions: ${stdout}`);
     } catch (error) {
       const errorMessage = `Failed to get stack outputs: ${(error as Error).message}`;
       core.setFailed(errorMessage);

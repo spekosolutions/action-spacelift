@@ -1390,7 +1390,7 @@ class StackManager extends spacectlManager_1.default {
             }
             // Set the entire JSON as a single output
             core.setOutput('outputs', JSON.stringify(outputs, (k, v) => typeof v === 'string' ? v.replace(/^"|"$/g, '').trim() : v));
-            core.info(`Successfully set stack outputs in GitHub Actions.`);
+            core.info(`Successfully set stack outputs in GitHub Actions: ${stdout}`);
         }
         catch (error) {
             const errorMessage = `Failed to get stack outputs: ${error.message}`;
